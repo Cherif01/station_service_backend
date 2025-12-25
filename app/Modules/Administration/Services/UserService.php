@@ -2,8 +2,10 @@
 
 namespace App\Modules\Administration\Services;
 
-use App\Modules\Administration\Http\Resources\UserResource;
-use App\Modules\Backoffice\Models\User;
+
+use App\Modules\Administration\Models\User;
+use App\Modules\Administration\Resources\UserResource;
+
 use App\Traits\ImageUpload;
 use Exception;
 use Illuminate\Support\Facades\Hash;
