@@ -2,7 +2,7 @@
 
 namespace App\Modules\Settings\Models;
 
-use App\Modules\Backoffice\Models\User;
+use App\Modules\Administration\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;

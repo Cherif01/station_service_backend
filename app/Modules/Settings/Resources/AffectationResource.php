@@ -2,6 +2,7 @@
 
 namespace App\Modules\Settings\Resources;
 
+use App\Modules\Administration\Http\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -13,22 +14,11 @@ class AffectationResource extends JsonResource
             'id'     => $this->id,
             'status' => $this->status,
 
-            'pompe' => [
-                'id'        => $this->pompe?->id,
-                'libelle'   => $this->pompe?->libelle,
-                'reference' => $this->pompe?->reference,
-            ],
+            'pompe' => new PompeResource($this->pompe),
 
-            'pompiste' => [
-                'id'   => $this->pompiste?->id,
-                'name' => $this->pompiste?->name,
-            ],
+            'pompiste' => new UserResource($this->pompiste),
 
-            'station' => [
-                'id'      => $this->station?->id,
-                'libelle' => $this->station?->libelle,
-                'code'    => $this->station?->code,
-            ],
+            'station' =>new StationResource($this->station),
 
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,
