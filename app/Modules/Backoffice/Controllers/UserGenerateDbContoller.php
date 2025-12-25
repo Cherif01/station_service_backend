@@ -6,6 +6,7 @@ use App\Events\SendMessageEvent;
 use App\Http\Controllers\Controller;
 use App\Modules\Backoffice\Models\Client;
 use App\Modules\Backoffice\Models\Licence;
+use App\Modules\Backoffice\Requests\ClientRequest;
 use App\Services\SmsService;
 use App\Traits\ApiResponses;
 use App\Traits\DBconnection;
@@ -18,7 +19,7 @@ class UserGenerateDbContoller extends Controller
 {
     use ApiResponses, DBconnection;
 
-    public function generate(Client $request, SmsService $smsService)
+    public function generate(ClientRequest $request, SmsService $smsService)
     {
         try {
             DB::beginTransaction();

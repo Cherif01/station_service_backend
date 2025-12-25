@@ -11,7 +11,7 @@ trait GenerateClientCode
     public function getClientCode(string $name, $count = null)
     {
 
-        $initials = $this->getCompanyInitials($name);
+        $initials = $this->getClientInitials($name);
         $totalCompanies = $count ?? Client::count() + 1;
 
         $numberPart = str_pad($totalCompanies, 4, '0', STR_PAD_LEFT);
