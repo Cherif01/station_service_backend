@@ -2,7 +2,7 @@
 
 namespace App\Modules\Settings\Resources;
 
-use App\Modules\Administration\Http\Resources\UserResource;
+use App\Modules\Administration\Resources\UserResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
