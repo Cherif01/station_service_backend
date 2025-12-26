@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use Illuminate\Database\Eloquent\Builder;
@@ -23,31 +22,31 @@ class RoleFilterService
         }
 
         $stationRelation = $options['station_relation'] ?? 'station';
-        $pompisteColumn  = $options['pompiste_column']  ?? 'id_pompiste';
+        $pompisteColumn  = $options['pompiste_column'] ?? 'id_pompiste';
 
         switch ($user->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             * - aucune restriction
-             */
+                 * 🔥 SUPER ADMIN
+                 * - aucune restriction
+                 */
             case 'super_admin':
                 return $query;
 
             /**
-             * 🔵 SUPERVISEUR
-             * - voit tout ce qui se passe dans SA VILLE
-             * - filtrage via relation station → ville
-             */
+                 * 🔵 SUPERVISEUR
+                 * - voit tout ce qui se passe dans SA VILLE
+                 * - filtrage via relation station → ville
+                 */
             case 'superviseur':
                 return $query->whereHas($stationRelation, function ($q) use ($user) {
                     $q->where('id_ville', $user->station->id_ville);
                 });
 
             /**
-             * 🟡 ADMIN / GERANT
-             * - voit uniquement SA STATION
-             */
+                 * 🟡 ADMIN / GERANT
+                 * - voit uniquement SA STATION
+                 */
             case 'admin':
             case 'gerant':
                 return $query->whereHas($stationRelation, function ($q) use ($user) {
@@ -55,15 +54,16 @@ class RoleFilterService
                 });
 
             /**
-             * 🔴 POMPISTE
-             * - voit uniquement SES DONNÉES
-             */
+                 * 🔴 POMPISTE
+                 * - voit uniquement SES DONNÉES
+                 */
             case 'pompiste':
-                return $query->where($pompisteColumn, $user->id);
+                // 🔒 Le pompiste ne voit aucune station
+                return $query->whereRaw('1 = 0');
 
             /**
-             * ❌ AUTRES
-             */
+                 * ❌ AUTRES
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
