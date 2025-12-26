@@ -9,50 +9,47 @@ use Exception;
 class StationService
 {
 
-    
+    public function getAll()
+    {
+        try {
 
+            // 🔹 Requête de base avec TOUTES les relations nécessaires
+            $query = Station::with([
+                'ville',
+                'pompes', // ✅ pompes de la station
+                'createdBy',
+                'modifiedBy',
+            ]);
 
+            /**
+             * 🔹 Filtrage par rôle (relation-based)
+             *
+             * - super_admin  → toutes les stations + leurs pompes
+             * - superviseur  → stations de sa ville + leurs pompes
+             * - admin/gerant → sa station + ses pompes
+             * - pompiste     → aucune station
+             */
+            $query = RoleFilterService::apply($query, [
+                'station_relation' => null,
+            ]);
 
-public function getAll()
-{
-    try {
+            // 🔹 Exécution
+            $stations = $query->get();
 
-        // 🔹 Requête de base avec TOUTES les relations nécessaires
-        $query = Station::with([
-            'ville',
-            'pompes',        // ✅ pompes de la station
-            'createdBy',
-            'modifiedBy',
-        ]);
+            return response()->json([
+                'status' => 200,
+                'data'   => StationResource::collection($stations),
+            ]);
 
-        /**
-         * 🔹 Filtrage par rôle (relation-based)
-         *
-         * - super_admin  → toutes les stations + leurs pompes
-         * - superviseur  → stations de sa ville + leurs pompes
-         * - admin/gerant → sa station + ses pompes
-         * - pompiste     → aucune station
-         */
-        $query = RoleFilterService::apply($query);
+        } catch (Exception $e) {
 
-        // 🔹 Exécution
-        $stations = $query->get();
-
-        return response()->json([
-            'status' => 200,
-            'data'   => StationResource::collection($stations),
-        ]);
-
-    } catch (Exception $e) {
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de la récupération des stations.',
-            'error'   => $e->getMessage(),
-        ]);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des stations.',
+                'error'   => $e->getMessage(),
+            ]);
+        }
     }
-}
-
 
     public function store(array $data)
     {
