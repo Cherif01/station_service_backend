@@ -17,7 +17,11 @@ class PompeResource extends JsonResource
             'index_initial' => $this->index_initial,
             'status'        => $this->status,
 
-            'station' =>new StationResource($this->station),
+            'station' => [
+                'id'      => $this->station?->id,
+                'libelle' => $this->station?->libelle,
+                'code'    => $this->station?->code,
+            ],
 
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,
