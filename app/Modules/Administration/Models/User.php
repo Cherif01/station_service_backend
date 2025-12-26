@@ -1,15 +1,14 @@
 <?php
-
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -144,6 +143,35 @@ class User extends Authenticatable
         });
     }
 
+    public function scopeVisible(Builder $query)
+    {
+        $auth = Auth::user();
+
+        if (! $auth) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        switch ($auth->role) {
+
+            case 'super_admin':
+                return $query;
+
+            case 'admin':
+            case 'superviseur':
+                return $query->whereHas('station', function ($q) use ($auth) {
+                    $q->where('id_ville', $auth->station?->id_ville);
+                });
+
+            case 'gerant':
+                return $query->where('id_station', $auth->id_station);
+
+            case 'pompiste':
+                return $query->where('id', $auth->id);
+
+            default:
+                return $query->whereRaw('1 = 0');
+        }
+    }
     /**
      * ============================
      * Relations métier

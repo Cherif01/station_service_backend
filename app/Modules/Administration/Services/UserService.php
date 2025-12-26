@@ -22,8 +22,8 @@ class UserService
         try {
 
             // 🔹 Requête simple
-            // Le filtrage par rôle est AUTOMATIQUE via le Global Scope du modèle User
-            $users = User::with(['station', 'createdBy', 'modifiedBy'])
+            $users = User::visible()
+                ->with(['station', 'createdBy', 'modifiedBy'])
                 ->orderBy('name')
                 ->get();
 
