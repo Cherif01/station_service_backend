@@ -60,9 +60,5 @@ class Pompe extends Model
 
     }
     
-     // 🔹 Station → Pompes
-    public function pompes()
-    {
-        return $this->hasMany(Pompe::class, 'id_station');
-    }
+    
 }

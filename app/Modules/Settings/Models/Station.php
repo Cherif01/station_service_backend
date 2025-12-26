@@ -68,4 +68,9 @@ class Station extends Model
     {
         return $this->belongsTo(User::class, 'modify_by');
     }
+
+     public function pompes()
+    {
+        return $this->hasMany(Pompe::class, 'id_station');
+    }
 }
