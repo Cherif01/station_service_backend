@@ -1,11 +1,8 @@
 <?php
-
 namespace App\Modules\Administration\Services;
-
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Administration\Resources\UserResource;
-
 use App\Traits\ImageUpload;
 use Exception;
 use Illuminate\Support\Facades\Hash;
@@ -51,16 +48,18 @@ class UserService
     {
         try {
 
-            // Upload image si présente
-            if (!empty($data['image'])) {
+            // 🔹 Upload image si présente
+            if (! empty($data['image'])) {
                 $data['image'] = $this->imageUpload($data['image'], 'users');
             }
 
-            // Hash mot de passe si présent et non vide
-            if (!empty($data['password'])) {
+            // 🔹 Mot de passe
+            // - si fourni → hash
+            // - sinon → mot de passe par défaut "123456"
+            if (! empty($data['password'])) {
                 $data['password'] = Hash::make($data['password']);
             } else {
-                unset($data['password']);
+                $data['password'] = Hash::make('123456');
             }
 
             $user = User::create($data);
@@ -94,7 +93,7 @@ class UserService
             $user = User::findOrFail($id);
 
             // Upload nouvelle image
-            if (!empty($data['image'])) {
+            if (! empty($data['image'])) {
 
                 if ($user->image) {
                     $this->deleteImage($user->image, 'users');
@@ -104,7 +103,7 @@ class UserService
             }
 
             // Hash mot de passe uniquement si fourni et non vide
-            if (!empty($data['password'])) {
+            if (! empty($data['password'])) {
                 $data['password'] = Hash::make($data['password']);
             } else {
                 unset($data['password']);
