@@ -3,7 +3,6 @@ namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Station;
 use App\Modules\Settings\Resources\StationResource;
-use App\Modules\Settings\Services\RoleFilterService;
 use Exception;
 
 class StationService
@@ -13,26 +12,14 @@ class StationService
     {
         try {
 
-            // 🔹 Requête de base avec les relations nécessaires
-            $query = Station::with([
+            // 🔹 Requête simple
+            // Le filtrage par rôle est AUTOMATIQUE via le Global Scope du modèle Station
+            $stations = Station::with([
                 'ville',
                 'pompes',
                 'createdBy',
                 'modifiedBy',
-            ]);
-
-            /**
-             * 🔹 Filtrage par rôle
-             *
-             * - super_admin  → toutes les stations
-             * - superviseur  → stations de sa ville
-             * - admin/gerant → sa station
-             * - pompiste     → aucune station
-             */
-            $query = RoleFilterService::apply($query);
-
-            // 🔹 Exécution
-            $stations = $query->get();
+            ])->orderBy('libelle')->get();
 
             return response()->json([
                 'status' => 200,

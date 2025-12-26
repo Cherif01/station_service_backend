@@ -1,59 +1,41 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Pompe;
 use App\Modules\Settings\Resources\PompeResource;
 use Exception;
-use App\Modules\Settings\Services\RoleFilterService;
 
 class PompeService
 {
-  
 
+    public function getAll()
+    {
+        try {
 
-public function getAll()
-{
-    try {
+            // 🔹 Requête SIMPLE
+            // Le filtrage par rôle est AUTOMATIQUE via le Global Scope du modèle Pompe
+            $pompes = Pompe::with([
+                'station',
+                'createdBy',
+                'modifiedBy',
+            ])
+                ->orderBy('reference')
+                ->get();
 
-        // 🔹 Requête de base avec les relations nécessaires
-        $query = Pompe::with([
-            'station',
-            'createdBy',
-            'modifiedBy',
-        ])->orderBy('reference');
+            return response()->json([
+                'status' => 200,
+                'data'   => PompeResource::collection($pompes),
+            ]);
 
-        /**
-         * 🔹 Filtrage par rôle (RELATION-BASED)
-         *
-         * - super_admin   → toutes les pompes
-         * - admin         → pompes des stations de sa ville
-         * - superviseur   → pompes des stations de sa ville
-         * - gerant        → pompes de sa station
-         * - pompiste      → UNIQUEMENT les pompes qui lui sont affectées
-         */
-        $query = RoleFilterService::apply($query, [
-            'station_relation' => 'station',   // Pompe → Station
-            'pompiste_column'  => 'id_pompiste' // si affectation directe (optionnel)
-        ]);
+        } catch (Exception $e) {
 
-        // 🔹 Exécution
-        $pompes = $query->get();
-
-        return response()->json([
-            'status' => 200,
-            'data'   => PompeResource::collection($pompes),
-        ]);
-
-    } catch (Exception $e) {
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de la récupération des pompes.',
-            'error'   => $e->getMessage(),
-        ]);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des pompes.',
+                'error'   => $e->getMessage(),
+            ]);
+        }
     }
-}
 
     public function store(array $data)
     {

@@ -3,9 +3,11 @@
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Auth;
 
 class Station extends Model
 {
@@ -23,8 +25,80 @@ class Station extends Model
         'modify_by',
     ];
 
+    /**
+     * =================================================
+     * BOOT : audit + code station + filtrage par rôle
+     * =================================================
+     */
     protected static function booted(): void
     {
+        /*
+        |--------------------------------------------------------------------------
+        | GLOBAL SCOPE : VISIBILITÉ PAR RÔLE
+        |--------------------------------------------------------------------------
+        */
+        static::addGlobalScope('role_scope', function (Builder $query) {
+
+            $user = Auth::user();
+
+            // Aucun utilisateur → aucune donnée
+            if (! $user) {
+                $query->whereRaw('1 = 0');
+                return;
+            }
+
+            switch ($user->role) {
+
+                /**
+                 * 🔥 SUPER ADMIN
+                 * → voit toutes les stations
+                 */
+                case 'super_admin':
+                    break;
+
+                /**
+                 * 🔵 ADMIN / SUPERVISEUR
+                 * → stations de leur ville
+                 */
+                case 'admin':
+                case 'superviseur':
+
+                    if (! $user->station) {
+                        $query->whereRaw('1 = 0');
+                        return;
+                    }
+
+                    $query->where('id_ville', $user->station->id_ville);
+                    break;
+
+                /**
+                 * 🟡 GÉRANT
+                 * → uniquement sa station
+                 */
+                case 'gerant':
+
+                    if (! $user->id_station) {
+                        $query->whereRaw('1 = 0');
+                        return;
+                    }
+
+                    $query->where('id', $user->id_station);
+                    break;
+
+                /**
+                 * 🔴 POMPISTE
+                 * → aucune station
+                 */
+                default:
+                    $query->whereRaw('1 = 0');
+            }
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | CRÉATION : audit + code automatique
+        |--------------------------------------------------------------------------
+        */
         static::creating(function ($m) {
 
             // Audit
@@ -32,15 +106,19 @@ class Station extends Model
                 $m->created_by = Auth::id();
             }
 
-            // 🔹 Génération automatique du code station
+            // Génération automatique du code station
             if (empty($m->code)) {
-
-                $lastId = self::max('id') + 1;
+                $lastId = self::withoutGlobalScopes()->max('id') + 1;
 
                 $m->code = 'STAT-' . str_pad($lastId, 3, '0', STR_PAD_LEFT);
             }
         });
 
+        /*
+        |--------------------------------------------------------------------------
+        | MISE À JOUR : audit
+        |--------------------------------------------------------------------------
+        */
         static::updating(function ($m) {
             if (Auth::check()) {
                 $m->modify_by = Auth::id();
@@ -49,14 +127,19 @@ class Station extends Model
     }
 
     /**
-     * ============================
-     * Relations
-     * ============================
+     * =================================================
+     * RELATIONS
+     * =================================================
      */
 
     public function ville(): BelongsTo
     {
         return $this->belongsTo(Ville::class, 'id_ville');
+    }
+
+    public function pompes(): HasMany
+    {
+        return $this->hasMany(Pompe::class, 'id_station');
     }
 
     public function createdBy(): BelongsTo
@@ -67,10 +150,5 @@ class Station extends Model
     public function modifiedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'modify_by');
-    }
-
-     public function pompes()
-    {
-        return $this->hasMany(Pompe::class, 'id_station');
     }
 }
