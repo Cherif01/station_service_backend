@@ -198,7 +198,9 @@ class UserService
     {
         try {
 
-            $user = User::with(['station', 'createdBy', 'modifiedBy'])
+            // ⚠️ IMPORTANT : désactiver les Global Scopes pour le login
+            $user = User::withoutGlobalScopes()
+                ->with(['station', 'createdBy', 'modifiedBy'])
                 ->where('telephone', $data['telephone'])
                 ->first();
 
@@ -234,4 +236,5 @@ class UserService
             ]);
         }
     }
+
 }
