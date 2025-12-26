@@ -60,71 +60,71 @@ class User extends Authenticatable
         | GLOBAL SCOPE : VISIBILITÉ DES UTILISATEURS
         |--------------------------------------------------------------------------
         */
-        static::addGlobalScope('role_scope', function (Builder $query) {
+        // static::addGlobalScope('role_scope', function (Builder $query) {
 
-            $auth = Auth::user();
+        //     $auth = Auth::user();
 
-            // Aucun utilisateur connecté → aucune donnée
-            if (! $auth) {
-                $query->whereRaw('1 = 0');
-                return;
-            }
+        //     // Aucun utilisateur connecté → aucune donnée
+        //     if (! $auth) {
+        //         $query->whereRaw('1 = 0');
+        //         return;
+        //     }
 
-            switch ($auth->role) {
+        //     switch ($auth->role) {
 
-                /**
-                 * 🔥 SUPER ADMIN
-                 * → voit tous les utilisateurs
-                 */
-                case 'super_admin':
-                    break;
+        //         /**
+        //          * 🔥 SUPER ADMIN
+        //          * → voit tous les utilisateurs
+        //          */
+        //         case 'super_admin':
+        //             break;
 
-                /**
-                 * 🔵 ADMIN / SUPERVISEUR
-                 * → utilisateurs des stations de leur ville
-                 */
-                case 'admin':
-                case 'superviseur':
+        //         /**
+        //          * 🔵 ADMIN / SUPERVISEUR
+        //          * → utilisateurs des stations de leur ville
+        //          */
+        //         case 'admin':
+        //         case 'superviseur':
 
-                    if (! $auth->station) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
+        //             if (! $auth->station) {
+        //                 $query->whereRaw('1 = 0');
+        //                 return;
+        //             }
 
-                    $query->whereHas('station', function ($q) use ($auth) {
-                        $q->where('id_ville', $auth->station->id_ville);
-                    });
-                    break;
+        //             $query->whereHas('station', function ($q) use ($auth) {
+        //                 $q->where('id_ville', $auth->station->id_ville);
+        //             });
+        //             break;
 
-                /**
-                 * 🟡 GÉRANT
-                 * → utilisateurs de SA station
-                 */
-                case 'gerant':
+        //         /**
+        //          * 🟡 GÉRANT
+        //          * → utilisateurs de SA station
+        //          */
+        //         case 'gerant':
 
-                    if (! $auth->id_station) {
-                        $query->whereRaw('1 = 0');
-                        return;
-                    }
+        //             if (! $auth->id_station) {
+        //                 $query->whereRaw('1 = 0');
+        //                 return;
+        //             }
 
-                    $query->where('id_station', $auth->id_station);
-                    break;
+        //             $query->where('id_station', $auth->id_station);
+        //             break;
 
-                /**
-                 * 🔴 POMPISTE
-                 * → uniquement lui-même
-                 */
-                case 'pompiste':
-                    $query->where('id', $auth->id);
-                    break;
+        //         /**
+        //          * 🔴 POMPISTE
+        //          * → uniquement lui-même
+        //          */
+        //         case 'pompiste':
+        //             $query->where('id', $auth->id);
+        //             break;
 
-                /**
-                 * ❌ AUTRES CAS
-                 */
-                default:
-                    $query->whereRaw('1 = 0');
-            }
-        });
+        //         /**
+        //          * ❌ AUTRES CAS
+        //          */
+        //         default:
+        //             $query->whereRaw('1 = 0');
+        //     }
+        // });
 
         /*
         |--------------------------------------------------------------------------
