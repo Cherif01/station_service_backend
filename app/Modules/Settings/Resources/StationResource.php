@@ -18,6 +18,10 @@ class StationResource extends JsonResource
             'adresse'   => $this->adresse,
             'latitude'  => $this->latitude,
             'longitude' => $this->longitude,
+             'parametrage' => $this->whenLoaded(
+                'parametrage',
+                fn () => new ParametrageStationResource($this->parametrage)
+            ),
 
             // 🔹 Ville (via Resource)
             'ville' => $this->whenLoaded(
