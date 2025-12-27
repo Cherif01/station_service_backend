@@ -149,31 +149,57 @@ class User extends Authenticatable
     {
         $auth = Auth::user();
 
+        // 🔒 Aucun utilisateur → aucune donnée
         if (! $auth) {
             return $query->whereRaw('1 = 0');
         }
 
         switch ($auth->role) {
 
+            /**
+                 * 🔥 SUPER ADMIN
+                 * → accès total
+                 */
             case 'super_admin':
                 return $query;
 
-            case 'admin':
+            /**
+                 * 🔵 SUPERVISEUR
+                 * → données des stations de sa ville
+                 */
             case 'superviseur':
+
+                if (! $auth->id_ville) {
+                    return $query->whereRaw('1 = 0');
+                }
+
                 return $query->whereHas('station', function ($q) use ($auth) {
-                    $q->where('id_ville', $auth->station?->id_ville);
+                    $q->where('id_ville', $auth->id_ville);
                 });
 
+            /**
+                 * 🟡 ADMIN / GÉRANT
+                 * → uniquement leur station
+                 */
+            case 'admin':
             case 'gerant':
+
+                if (! $auth->id_station) {
+                    return $query->whereRaw('1 = 0');
+                }
+
                 return $query->where('id_station', $auth->id_station);
 
-            case 'pompiste':
-                return $query->where('id', $auth->id);
-
+            /**
+                 * 🔴 POMPISTE
+                 * → bloqué par défaut
+                 * (doit passer par Affectation ou relation dédiée)
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
     }
+
     /**
      * ============================
      * Relations métier
