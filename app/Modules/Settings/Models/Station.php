@@ -162,4 +162,8 @@ class Station extends Model
     {
         return $this->belongsTo(User::class, 'modify_by');
     }
+    public function parametrage()
+    {
+        return $this->hasOne(ParametrageStation::class, 'id_station');
+    }
 }

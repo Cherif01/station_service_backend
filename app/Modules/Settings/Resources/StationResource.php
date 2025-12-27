@@ -5,6 +5,7 @@ namespace App\Modules\Settings\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Modules\Settings\Resources\PompeResource;
+use App\Modules\Settings\Resources\VilleResource;
 
 class StationResource extends JsonResource
 {
@@ -18,13 +19,13 @@ class StationResource extends JsonResource
             'latitude'  => $this->latitude,
             'longitude' => $this->longitude,
 
-            // 🔹 Ville
-            'ville' => [
-                'id'      => $this->ville?->id,
-                'libelle' => $this->ville?->libelle,
-            ],
+            // 🔹 Ville (via Resource)
+            'ville' => $this->whenLoaded(
+                'ville',
+                fn () => new VilleResource($this->ville)
+            ),
 
-            // 🔹 Pompes de la station
+            // 🔹 Pompes
             'pompes' => PompeResource::collection(
                 $this->whenLoaded('pompes')
             ),

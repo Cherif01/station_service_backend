@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Station;
@@ -7,19 +8,25 @@ use Exception;
 
 class StationService
 {
-
+    /**
+     * =================================================
+     * 🔹 LISTE DES STATIONS
+     * =================================================
+     */
     public function getAll()
     {
         try {
 
-            // 🔹 Requête simple
-            // Le filtrage par rôle est AUTOMATIQUE via le Global Scope du modèle Station
+            // 🔹 Filtrage AUTOMATIQUE via GlobalScope Station
             $stations = Station::with([
-                'ville',
+                'ville.pays',
                 'pompes',
+                'parametrage',
                 'createdBy',
                 'modifiedBy',
-            ])->orderBy('libelle')->get();
+            ])
+            ->orderBy('libelle')
+            ->get();
 
             return response()->json([
                 'status' => 200,
@@ -36,6 +43,51 @@ class StationService
         }
     }
 
+    /**
+     * =================================================
+     * 🔹 DÉTAIL D’UNE STATION
+     * =================================================
+     */
+    public function getOne(int $id)
+    {
+        try {
+
+            // 🔹 Respect du GlobalScope (sécurité)
+            $station = Station::with([
+                'ville.pays',
+                'pompes',
+                'parametrage',
+                'createdBy',
+                'modifiedBy',
+            ])->findOrFail($id);
+
+            return response()->json([
+                'status' => 200,
+                'data'   => new StationResource($station),
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Station introuvable ou accès non autorisé.',
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération de la station.',
+                'error'   => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * =================================================
+     * 🔹 CRÉATION
+     * =================================================
+     */
     public function store(array $data)
     {
         try {
@@ -58,6 +110,11 @@ class StationService
         }
     }
 
+    /**
+     * =================================================
+     * 🔹 MISE À JOUR
+     * =================================================
+     */
     public function update(int $id, array $data)
     {
         try {
@@ -71,6 +128,13 @@ class StationService
                 'data'    => new StationResource($station),
             ]);
 
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Station introuvable ou accès non autorisé.',
+            ]);
+
         } catch (Exception $e) {
 
             return response()->json([
@@ -81,6 +145,11 @@ class StationService
         }
     }
 
+    /**
+     * =================================================
+     * 🔹 SUPPRESSION
+     * =================================================
+     */
     public function delete(int $id)
     {
         try {
@@ -90,6 +159,13 @@ class StationService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Station supprimée avec succès.',
+            ]);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Station introuvable ou accès non autorisé.',
             ]);
 
         } catch (Exception $e) {
