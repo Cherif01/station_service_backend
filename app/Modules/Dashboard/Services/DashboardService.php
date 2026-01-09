@@ -18,7 +18,7 @@ class DashboardService
     public function getDashboard(): array
     {
         return [
-            'kpis'                   => $this->getKpis(),
+            // 'kpis'                   => $this->getKpis(),
             // 'progression_7_jours'    => $this->getProgression7Jours(),
             // 'repartition_carburant'  => $this->getRepartitionCarburant(),
             // 'volume_par_pompe'       => $this->getVolumeParPompe(),
