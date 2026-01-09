@@ -5,6 +5,7 @@ namespace App\Modules\Dashboard\Services;
 use App\Modules\Vente\Models\LigneVente;
 use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Settings\Models\Pompe;
+use App\Modules\Vente\Models\Cuve;
 use Carbon\Carbon;
 
 class DashboardService
@@ -122,7 +123,22 @@ class DashboardService
      * 🔹 APPROVISIONNEMENTS (30 JOURS)
      * =================================================
      */
-    private function getApprovisionnements30Jours(): array
+    // private function getApprovisionnements30Jours(): array
+    // {
+    //     return ApprovisionnementCuve::visible()
+    //         ->where('created_at', '>=', Carbon::now()->subDays(30))
+    //         ->selectRaw('DATE(created_at) as date, SUM(qte_appro) as volume')
+    //         ->groupByRaw('DATE(created_at)')
+    //         ->orderBy('date')
+    //         ->get()
+    //         ->map(fn ($row) => [
+    //             'date'   => $row->date,
+    //             'volume' => (float) $row->volume,
+    //         ])
+    //         ->toArray();
+    // }
+
+    public function getApprovisionnements30Jours(): array
     {
         return ApprovisionnementCuve::visible()
             ->where('created_at', '>=', Carbon::now()->subDays(30))
@@ -136,4 +152,28 @@ class DashboardService
             ])
             ->toArray();
     }
+
+
+ public function getDernierPrixApprovisionnement(?int $idCuve): float
+    {
+        if (! $idCuve) {
+            return 0.0;
+        }
+
+        $puAppro = ApprovisionnementCuve::visible()
+            ->where('id_cuve', $idCuve)
+            ->where('type_appro', 'approvisionnement')
+            ->orderByDesc('created_at')
+            ->value('pu_unitaire');
+
+        if ($puAppro !== null) {
+            return (float) $puAppro;
+        }
+
+        return (float) Cuve::visible()
+            ->where('id', $idCuve)
+            ->value('pu_vente') ?? 0.0;
+    }
+
+
 }
