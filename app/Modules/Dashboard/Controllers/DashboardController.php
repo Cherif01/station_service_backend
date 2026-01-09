@@ -24,11 +24,11 @@ class DashboardController extends Controller
     {
         try {
 
-            //$data = $this->dashboardService->getDashboard();
+            $data = $this->dashboardService->getDashboard();
 
             return response()->json([
                 'status' => 200,
-                'data'   => [],
+                'data'   => $data,
             ], 200);
 
         } catch (Throwable $e) {
