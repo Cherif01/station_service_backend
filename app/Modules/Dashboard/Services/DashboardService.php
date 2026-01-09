@@ -18,10 +18,10 @@ class DashboardService
     {
         return [
             'kpis'                   => $this->getKpis(),
-            'progression_7_jours'    => $this->getProgression7Jours(),
-            'repartition_carburant'  => $this->getRepartitionCarburant(),
-            'volume_par_pompe'       => $this->getVolumeParPompe(),
-            'approvisionnements_30j' => $this->getApprovisionnements30Jours(),
+            // 'progression_7_jours'    => $this->getProgression7Jours(),
+            // 'repartition_carburant'  => $this->getRepartitionCarburant(),
+            // 'volume_par_pompe'       => $this->getVolumeParPompe(),
+            // 'approvisionnements_30j' => $this->getApprovisionnements30Jours(),
         ];
     }
 
