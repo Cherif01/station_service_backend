@@ -69,15 +69,19 @@ class DashboardService
             ->where('status', true)
             ->where('created_at', '>=', $start)
             ->get()
-            ->groupBy(fn ($v) => $v->created_at->toDateString())
-            ->map(fn ($group, $date) => [
-                'date'    => $date,
-                'montant' => (float) $group->sum(function ($v) {
-                    $pu = $this->getDernierPrixApprovisionnement($v->id_cuve);
-                    return $v->qte_vendu * $pu;
-                }),
-                'volume'  => (float) $group->sum('qte_vendu'),
-            ])
+            ->groupBy(function ($v) {
+                return $v->created_at->toDateString();
+            })
+            ->map(function ($group, $date) {
+                return [
+                    'date'    => $date,
+                    'montant' => (float) $group->sum(function ($v) {
+                        $pu = $this->getDernierPrixApprovisionnement($v->id_cuve);
+                        return $v->qte_vendu * $pu;
+                    }),
+                    'volume'  => (float) $group->sum('qte_vendu'),
+                ];
+            })
             ->values()
             ->toArray();
     }
@@ -96,11 +100,15 @@ class DashboardService
             })
             ->with('affectation.pompe:id,type_pompe')
             ->get()
-            ->groupBy(fn ($vente) => $vente->affectation->pompe->type_pompe)
-            ->map(fn ($group, $type) => [
-                'type_pompe' => $type,
-                'volume'     => (float) $group->sum('qte_vendu'),
-            ])
+            ->groupBy(function ($vente) {
+                return $vente->affectation->pompe->type_pompe;
+            })
+            ->map(function ($group, $type) {
+                return [
+                    'type_pompe' => $type,
+                    'volume'     => (float) $group->sum('qte_vendu'),
+                ];
+            })
             ->values()
             ->toArray();
     }
@@ -116,11 +124,15 @@ class DashboardService
             ->where('status', true)
             ->with('affectation.pompe:id,libelle')
             ->get()
-            ->groupBy(fn ($vente) => $vente->affectation->pompe->libelle)
-            ->map(fn ($group, $pompe) => [
-                'pompe'  => $pompe,
-                'volume' => (float) $group->sum('qte_vendu'),
-            ])
+            ->groupBy(function ($vente) {
+                return $vente->affectation->pompe->libelle;
+            })
+            ->map(function ($group, $pompe) {
+                return [
+                    'pompe'  => $pompe,
+                    'volume' => (float) $group->sum('qte_vendu'),
+                ];
+            })
             ->sortByDesc('volume')
             ->values()
             ->toArray();
@@ -139,10 +151,12 @@ class DashboardService
             ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
             ->get()
-            ->map(fn ($row) => [
-                'date'   => $row->date,
-                'volume' => (float) $row->volume,
-            ])
+            ->map(function ($row) {
+                return [
+                    'date'   => $row->date,
+                    'volume' => (float) $row->volume,
+                ];
+            })
             ->toArray();
     }
 
@@ -157,7 +171,6 @@ class DashboardService
             return 0.0;
         }
 
-        // 🔹 Dernier prix d’approvisionnement
         $puAppro = ApprovisionnementCuve::visible()
             ->where('id_cuve', $idCuve)
             ->where('type_appro', 'approvisionnement')
@@ -168,7 +181,6 @@ class DashboardService
             return (float) $puAppro;
         }
 
-        // 🔹 Fallback : prix de vente de la cuve
         return (float) Cuve::visible()
             ->where('id', $idCuve)
             ->value('pu_vente') ?? 0.0;
