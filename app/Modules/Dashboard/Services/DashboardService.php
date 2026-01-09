@@ -1,11 +1,10 @@
 <?php
-
 namespace App\Modules\Dashboard\Services;
 
-use App\Modules\Vente\Models\LigneVente;
-use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Settings\Models\Pompe;
+use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Vente\Models\Cuve;
+use App\Modules\Vente\Models\LigneVente;
 use Carbon\Carbon;
 
 class DashboardService
@@ -21,7 +20,7 @@ class DashboardService
             'kpis'                   => $this->getKpis(),
             'progression_7_jours'    => $this->getProgression7Jours(),
             // 'repartition_carburant'  => $this->getRepartitionCarburant(),
-             'volume_par_pompe'       => $this->getVolumeParPompe(),
+            'volume_par_pompe'       => $this->getVolumeParPompe(),
             'approvisionnements_30j' => $this->getApprovisionnements30Jours(),
         ];
     }
@@ -66,7 +65,7 @@ class DashboardService
             ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
             ->get()
-            ->map(fn ($row) => [
+            ->map(fn($row) => [
                 'date'    => $row->date,
                 'montant' => 0.0,
                 'volume'  => (float) $row->volume,
@@ -88,8 +87,8 @@ class DashboardService
             })
             ->with('affectation.pompe:id,type_pompe')
             ->get()
-            ->groupBy(fn ($vente) => $vente->affectation->pompe->type_pompe)
-            ->map(fn ($group, $type) => [
+            ->groupBy(fn($vente) => $vente->affectation->pompe->type_pompe)
+            ->map(fn($group, $type) => [
                 'type_pompe' => $type,
                 'volume'     => (float) $group->sum('qte_vendu'),
             ])
@@ -102,18 +101,50 @@ class DashboardService
      * 🔹 VOLUME PAR POMPE
      * =================================================
      */
+    // public function getVolumeParPompe(): array
+    // {
+    //     return LigneVente::visible()
+    //         ->where('status', true)
+    //         ->whereHas('affectation.pompe')
+    //         ->with('affectation.pompe:id,libelle')
+    //         ->get()
+    //         ->groupBy(fn ($vente) => $vente->affectation->pompe->libelle)
+    //         ->map(fn ($group, $pompe) => [
+    //             'pompe'  => $pompe,
+    //             'volume' => (float) $group->sum('qte_vendu'),
+    //         ])
+    //         ->sortByDesc('volume')
+    //         ->values()
+    //         ->toArray();
+    // }
+
     public function getVolumeParPompe(): array
     {
         return LigneVente::visible()
             ->where('status', true)
-            ->whereHas('affectation.pompe')
-            ->with('affectation.pompe:id,libelle')
+
+        // 🔒 pompe obligatoire ET visible
+            ->whereHas('affectation.pompe', function ($q) {
+                $q->visible();
+            })
+
+        // 🔒 charger la même pompe visible
+            ->with([
+                'affectation.pompe' => fn($q) => $q->visible()->select('id', 'libelle'),
+            ])
+
             ->get()
-            ->groupBy(fn ($vente) => $vente->affectation->pompe->libelle)
-            ->map(fn ($group, $pompe) => [
+
+        // 🔒 sécurité finale (coût nul)
+            ->filter(fn($v) => $v->affectation && $v->affectation->pompe)
+
+            ->groupBy(fn($v) => $v->affectation->pompe->libelle)
+
+            ->map(fn($group, $pompe) => [
                 'pompe'  => $pompe,
                 'volume' => (float) $group->sum('qte_vendu'),
             ])
+
             ->sortByDesc('volume')
             ->values()
             ->toArray();
@@ -147,15 +178,14 @@ class DashboardService
             ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
             ->get()
-            ->map(fn ($row) => [
+            ->map(fn($row) => [
                 'date'   => $row->date,
                 'volume' => (float) $row->volume,
             ])
             ->toArray();
     }
 
-
- public function getDernierPrixApprovisionnement(?int $idCuve): float
+    public function getDernierPrixApprovisionnement(?int $idCuve): float
     {
         if (! $idCuve) {
             return 0.0;
@@ -175,6 +205,5 @@ class DashboardService
             ->where('id', $idCuve)
             ->value('pu_vente') ?? 0.0;
     }
-
 
 }
