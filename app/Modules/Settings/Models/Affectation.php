@@ -3,6 +3,8 @@
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
+use App\Modules\Settings\Models\Station;
+use App\Modules\Settings\Models\Pompe;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -108,7 +110,7 @@ class Affectation extends Model
     public function station(): BelongsTo
     {
         return $this->belongsTo(Station::class, 'id_station');
-
+    }
 
     public function pompe(): BelongsTo
     {
