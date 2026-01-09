@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Dashboard\Services;
 
 use App\Modules\Settings\Models\Pompe;
@@ -19,7 +20,7 @@ class DashboardService
         return [
             'kpis'                   => $this->getKpis(),
             'progression_7_jours'    => $this->getProgression7Jours(),
-            // 'repartition_carburant'  => $this->getRepartitionCarburant(),
+            'repartition_carburant'  => $this->getRepartitionCarburant(),
             'volume_par_pompe'       => $this->getVolumeParPompe(),
             'approvisionnements_30j' => $this->getApprovisionnements30Jours(),
         ];
@@ -30,18 +31,25 @@ class DashboardService
      * 🔹 KPIs DU JOUR
      * =================================================
      */
-    private function getKpis(): array
+    public function getKpis(): array
     {
         $today = Carbon::today();
 
-        $ventesQuery = LigneVente::visible()
+        $ventes = LigneVente::visible()
             ->where('status', true)
-            ->whereDate('created_at', $today);
+            ->whereDate('created_at', $today)
+            ->whereHas('affectation.pompe', fn ($q) => $q->visible())
+            ->get();
+
+        $recettes = $ventes->sum(function ($vente) {
+            $pu = $this->getDernierPrixApprovisionnement($vente->id_cuve);
+            return $vente->qte_vendu * $pu;
+        });
 
         return [
-            'ventes_du_jour'   => (clone $ventesQuery)->count(),
-            'recettes_du_jour' => 0.0, // caisse volontairement non branchée
-            'volume_vendu'     => (float) (clone $ventesQuery)->sum('qte_vendu'),
+            'ventes_du_jour'   => $ventes->count(),
+            'recettes_du_jour' => (float) $recettes,
+            'volume_vendu'     => (float) $ventes->sum('qte_vendu'),
             'pompes_actives'   => [
                 'actives' => Pompe::visible()->where('status', true)->count(),
                 'total'   => Pompe::visible()->count(),
@@ -54,22 +62,27 @@ class DashboardService
      * 🔹 PROGRESSION DES VENTES (7 JOURS)
      * =================================================
      */
-    private function getProgression7Jours(): array
+    public function getProgression7Jours(): array
     {
         $start = Carbon::now()->subDays(6)->startOfDay();
 
         return LigneVente::visible()
             ->where('status', true)
             ->where('created_at', '>=', $start)
-            ->selectRaw('DATE(created_at) as date, SUM(qte_vendu) as volume')
-            ->groupByRaw('DATE(created_at)')
-            ->orderBy('date')
+            ->whereHas('affectation.pompe', fn ($q) => $q->visible())
             ->get()
-            ->map(fn($row) => [
-                'date'    => $row->date,
-                'montant' => 0.0,
-                'volume'  => (float) $row->volume,
-            ])
+            ->groupBy(fn ($v) => $v->created_at->toDateString())
+            ->map(function ($group, $date) {
+                return [
+                    'date'    => $date,
+                    'montant' => (float) $group->sum(function ($v) {
+                        $pu = $this->getDernierPrixApprovisionnement($v->id_cuve);
+                        return $v->qte_vendu * $pu;
+                    }),
+                    'volume'  => (float) $group->sum('qte_vendu'),
+                ];
+            })
+            ->values()
             ->toArray();
     }
 
@@ -78,17 +91,21 @@ class DashboardService
      * 🔹 RÉPARTITION PAR CARBURANT
      * =================================================
      */
-    private function getRepartitionCarburant(): array
+    public function getRepartitionCarburant(): array
     {
         return LigneVente::visible()
             ->where('status', true)
             ->whereHas('affectation.pompe', function ($q) {
-                $q->whereNotNull('type_pompe');
+                $q->visible()->whereNotNull('type_pompe');
             })
-            ->with('affectation.pompe:id,type_pompe')
+            ->with([
+                'affectation.pompe' => fn ($q) =>
+                    $q->visible()->select('id', 'type_pompe')
+            ])
             ->get()
-            ->groupBy(fn($vente) => $vente->affectation->pompe->type_pompe)
-            ->map(fn($group, $type) => [
+            ->filter(fn ($v) => $v->affectation && $v->affectation->pompe)
+            ->groupBy(fn ($v) => $v->affectation->pompe->type_pompe)
+            ->map(fn ($group, $type) => [
                 'type_pompe' => $type,
                 'volume'     => (float) $group->sum('qte_vendu'),
             ])
@@ -101,50 +118,22 @@ class DashboardService
      * 🔹 VOLUME PAR POMPE
      * =================================================
      */
-    // public function getVolumeParPompe(): array
-    // {
-    //     return LigneVente::visible()
-    //         ->where('status', true)
-    //         ->whereHas('affectation.pompe')
-    //         ->with('affectation.pompe:id,libelle')
-    //         ->get()
-    //         ->groupBy(fn ($vente) => $vente->affectation->pompe->libelle)
-    //         ->map(fn ($group, $pompe) => [
-    //             'pompe'  => $pompe,
-    //             'volume' => (float) $group->sum('qte_vendu'),
-    //         ])
-    //         ->sortByDesc('volume')
-    //         ->values()
-    //         ->toArray();
-    // }
-
     public function getVolumeParPompe(): array
     {
         return LigneVente::visible()
             ->where('status', true)
-
-        // 🔒 pompe obligatoire ET visible
-            ->whereHas('affectation.pompe', function ($q) {
-                $q->visible();
-            })
-
-        // 🔒 charger la même pompe visible
+            ->whereHas('affectation.pompe', fn ($q) => $q->visible())
             ->with([
-                'affectation.pompe' => fn($q) => $q->visible()->select('id', 'libelle'),
+                'affectation.pompe' => fn ($q) =>
+                    $q->visible()->select('id', 'libelle')
             ])
-
             ->get()
-
-        // 🔒 sécurité finale (coût nul)
-            ->filter(fn($v) => $v->affectation && $v->affectation->pompe)
-
-            ->groupBy(fn($v) => $v->affectation->pompe->libelle)
-
-            ->map(fn($group, $pompe) => [
+            ->filter(fn ($v) => $v->affectation && $v->affectation->pompe)
+            ->groupBy(fn ($v) => $v->affectation->pompe->libelle)
+            ->map(fn ($group, $pompe) => [
                 'pompe'  => $pompe,
                 'volume' => (float) $group->sum('qte_vendu'),
             ])
-
             ->sortByDesc('volume')
             ->values()
             ->toArray();
@@ -155,21 +144,6 @@ class DashboardService
      * 🔹 APPROVISIONNEMENTS (30 JOURS)
      * =================================================
      */
-    // private function getApprovisionnements30Jours(): array
-    // {
-    //     return ApprovisionnementCuve::visible()
-    //         ->where('created_at', '>=', Carbon::now()->subDays(30))
-    //         ->selectRaw('DATE(created_at) as date, SUM(qte_appro) as volume')
-    //         ->groupByRaw('DATE(created_at)')
-    //         ->orderBy('date')
-    //         ->get()
-    //         ->map(fn ($row) => [
-    //             'date'   => $row->date,
-    //             'volume' => (float) $row->volume,
-    //         ])
-    //         ->toArray();
-    // }
-
     public function getApprovisionnements30Jours(): array
     {
         return ApprovisionnementCuve::visible()
@@ -178,13 +152,18 @@ class DashboardService
             ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
             ->get()
-            ->map(fn($row) => [
+            ->map(fn ($row) => [
                 'date'   => $row->date,
                 'volume' => (float) $row->volume,
             ])
             ->toArray();
     }
 
+    /**
+     * =================================================
+     * 🔹 PRIX UNITAIRE : DERNIER APPROVISIONNEMENT
+     * =================================================
+     */
     public function getDernierPrixApprovisionnement(?int $idCuve): float
     {
         if (! $idCuve) {
@@ -201,9 +180,11 @@ class DashboardService
             return (float) $puAppro;
         }
 
-        return (float) Cuve::visible()
-            ->where('id', $idCuve)
-            ->value('pu_vente') ?? 0.0;
+        return (float) (
+            Cuve::visible()
+                ->where('id', $idCuve)
+                ->value('pu_vente')
+            ?? 0.0
+        );
     }
-
 }
