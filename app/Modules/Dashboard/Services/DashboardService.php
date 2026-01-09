@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Dashboard\Services;
 
 use App\Modules\Settings\Models\Pompe;
@@ -68,8 +69,8 @@ class DashboardService
             ->where('status', true)
             ->where('created_at', '>=', $start)
             ->get()
-            ->groupBy(fn($v) => $v->created_at->toDateString())
-            ->map(fn($group, $date) => [
+            ->groupBy(fn ($v) => $v->created_at->toDateString())
+            ->map(fn ($group, $date) => [
                 'date'    => $date,
                 'montant' => (float) $group->sum(function ($v) {
                     $pu = $this->getDernierPrixApprovisionnement($v->id_cuve);
@@ -95,8 +96,8 @@ class DashboardService
             })
             ->with('affectation.pompe:id,type_pompe')
             ->get()
-            ->groupBy(fn($vente) => $vente->affectation->pompe->type_pompe)
-            ->map(fn($group, $type) => [
+            ->groupBy(fn ($vente) => $vente->affectation->pompe->type_pompe)
+            ->map(fn ($group, $type) => [
                 'type_pompe' => $type,
                 'volume'     => (float) $group->sum('qte_vendu'),
             ])
@@ -115,8 +116,8 @@ class DashboardService
             ->where('status', true)
             ->with('affectation.pompe:id,libelle')
             ->get()
-            ->groupBy(fn($vente) => $vente->affectation->pompe->libelle)
-            ->map(fn($group, $pompe) => [
+            ->groupBy(fn ($vente) => $vente->affectation->pompe->libelle)
+            ->map(fn ($group, $pompe) => [
                 'pompe'  => $pompe,
                 'volume' => (float) $group->sum('qte_vendu'),
             ])
@@ -138,7 +139,7 @@ class DashboardService
             ->groupByRaw('DATE(created_at)')
             ->orderBy('date')
             ->get()
-            ->map(fn($row) => [
+            ->map(fn ($row) => [
                 'date'   => $row->date,
                 'volume' => (float) $row->volume,
             ])
@@ -151,27 +152,25 @@ class DashboardService
      * =================================================
      */
     private function getDernierPrixApprovisionnement(?int $idCuve): float
-{
-    if (! $idCuve) {
-        return 0.0;
+    {
+        if (! $idCuve) {
+            return 0.0;
+        }
+
+        // 🔹 Dernier prix d’approvisionnement
+        $puAppro = ApprovisionnementCuve::visible()
+            ->where('id_cuve', $idCuve)
+            ->where('type_appro', 'approvisionnement')
+            ->orderByDesc('created_at')
+            ->value('pu_unitaire');
+
+        if ($puAppro !== null) {
+            return (float) $puAppro;
+        }
+
+        // 🔹 Fallback : prix de vente de la cuve
+        return (float) Cuve::visible()
+            ->where('id', $idCuve)
+            ->value('pu_vente') ?? 0.0;
     }
-
-    // 🔹 Dernier prix d’approvisionnement
-    $puAppro = ApprovisionnementCuve::visible()
-        ->where('id_cuve', $idCuve)
-        ->where('type_appro', 'approvisionnement')
-        ->orderByDesc('created_at')
-        ->value('pu_unitaire');
-
-    if ($puAppro !== null) {
-        return (float) $puAppro;
-    }
-
-    // 🔹 Fallback : prix de vente cuve
-    return (float) Cuve::visible()
-        ->where('id', $idCuve)
-        ->value('pu_vente') ?? 0.0;
-}
-
-
 }
