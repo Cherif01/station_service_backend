@@ -31,7 +31,7 @@ class DashboardService
      * 🔹 KPIs DU JOUR
      * =================================================
      */
-    private function getKpis(): array
+    public function getKpis(): array
     {
         $today = Carbon::today();
 
@@ -61,7 +61,7 @@ class DashboardService
      * 🔹 PROGRESSION DES VENTES (7 JOURS)
      * =================================================
      */
-    private function getProgression7Jours(): array
+    public function getProgression7Jours(): array
     {
         $start = Carbon::now()->subDays(6)->startOfDay();
 
@@ -91,7 +91,7 @@ class DashboardService
      * 🔹 RÉPARTITION PAR CARBURANT
      * =================================================
      */
-    private function getRepartitionCarburant(): array
+    public function getRepartitionCarburant(): array
     {
         return LigneVente::visible()
             ->where('status', true)
@@ -118,7 +118,7 @@ class DashboardService
      * 🔹 VOLUME PAR POMPE
      * =================================================
      */
-    private function getVolumeParPompe(): array
+    public function getVolumeParPompe(): array
     {
         return LigneVente::visible()
             ->where('status', true)
@@ -143,7 +143,7 @@ class DashboardService
      * 🔹 APPROVISIONNEMENTS (30 JOURS)
      * =================================================
      */
-    private function getApprovisionnements30Jours(): array
+   public function getApprovisionnements30Jours(): array
     {
         return ApprovisionnementCuve::visible()
             ->where('created_at', '>=', Carbon::now()->subDays(30))
@@ -165,7 +165,7 @@ class DashboardService
      * 🔹 PRIX UNITAIRE : DERNIER APPROVISIONNEMENT
      * =================================================
      */
-    private function getDernierPrixApprovisionnement(?int $idCuve): float
+    public function getDernierPrixApprovisionnement(?int $idCuve): float
     {
         if (! $idCuve) {
             return 0.0;
