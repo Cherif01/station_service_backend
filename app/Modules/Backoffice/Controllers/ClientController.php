@@ -26,7 +26,7 @@ class ClientController extends Controller
             $fields = $request->validated();
 
             // Generation du nom de la base de donnée et du code de l'entreprise
-            $database = 'spatech_' . Str::slug($fields['name']) . '_' . Str::random(10);
+            $database = 'spatech_station_' . Str::slug($fields['name']) . '_' . Str::random(10);
             $client_code = $this->getClientCode($fields['name']);
 
             // Stocké les données du client dans la table client
