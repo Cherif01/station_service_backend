@@ -150,23 +150,28 @@ class DashboardService
      * 🔹 PRIX UNITAIRE : DERNIER APPROVISIONNEMENT
      * =================================================
      */
-    private function getDernierPrixApprovisionnement(int $idCuve): float
-    {
-        // 🔹 1. Dernier prix d’approvisionnement (réel)
-        $puAppro = ApprovisionnementCuve::visible()
-            ->where('id_cuve', $idCuve)
-            ->where('type_appro', 'approvisionnement')
-            ->orderByDesc('created_at')
-            ->value('pu_unitaire');
-
-        if ($puAppro !== null) {
-            return (float) $puAppro;
-        }
-
-        // 🔹 2. Fallback : prix de vente de la cuve
-        return (float) Cuve::visible()
-            ->where('id', $idCuve)
-            ->value('pu_vente') ?? 0.0;
+    private function getDernierPrixApprovisionnement(?int $idCuve): float
+{
+    if (! $idCuve) {
+        return 0.0;
     }
+
+    // 🔹 Dernier prix d’approvisionnement
+    $puAppro = ApprovisionnementCuve::visible()
+        ->where('id_cuve', $idCuve)
+        ->where('type_appro', 'approvisionnement')
+        ->orderByDesc('created_at')
+        ->value('pu_unitaire');
+
+    if ($puAppro !== null) {
+        return (float) $puAppro;
+    }
+
+    // 🔹 Fallback : prix de vente cuve
+    return (float) Cuve::visible()
+        ->where('id', $idCuve)
+        ->value('pu_vente') ?? 0.0;
+}
+
 
 }
