@@ -102,10 +102,11 @@ class DashboardService
      * 🔹 VOLUME PAR POMPE
      * =================================================
      */
-    private function getVolumeParPompe(): array
+    public function getVolumeParPompe(): array
     {
         return LigneVente::visible()
             ->where('status', true)
+            ->whereHas('affectation.pompe')
             ->with('affectation.pompe:id,libelle')
             ->get()
             ->groupBy(fn ($vente) => $vente->affectation->pompe->libelle)
