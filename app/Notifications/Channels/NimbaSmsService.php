@@ -14,7 +14,7 @@ class NimbaSmsService
             // 🔹 Configuration (services.php)
             // =================================================
             $serviceId   = config('services.nimba.service_id');
-            $secretToken = config('services.nimba.secret'); // ✅ CORRIGÉ ICI
+            $secretToken = config('services.nimba.secret'); // ✅ cohérent avec services.php
             $basicToken  = config('services.nimba.basic_token');
             $sender      = config('services.nimba.sender');
             $url         = config('services.nimba.url');
@@ -50,6 +50,9 @@ class NimbaSmsService
                 'message'     => $message,
             ]);
 
+            // =================================================
+            // ✅ Succès
+            // =================================================
             if ($response->successful()) {
                 return [
                     'success'  => true,
@@ -59,8 +62,14 @@ class NimbaSmsService
             }
 
             // =================================================
-            // 🔹 Erreur fournisseur
+            // ❌ Erreur fournisseur (LOG AJOUTÉ ICI)
             // =================================================
+            Log::error('NIMBA SMS ERROR', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+                'json'   => $response->json(),
+            ]);
+
             return [
                 'success' => false,
                 'message' => 'Échec lors de l’envoi du SMS.',
