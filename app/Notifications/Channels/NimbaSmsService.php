@@ -10,13 +10,19 @@ class NimbaSmsService
     public function sendOtp(string $telephone, string $message): array
     {
         try {
+            // =================================================
+            // 🔹 Configuration (services.php)
+            // =================================================
             $serviceId   = config('services.nimba.service_id');
-            $secretToken = config('services.nimba.secret_token');
+            $secretToken = config('services.nimba.secret'); // ✅ CORRIGÉ ICI
             $basicToken  = config('services.nimba.basic_token');
             $sender      = config('services.nimba.sender');
             $url         = config('services.nimba.url');
 
-            if (! $serviceId || ! $secretToken || ! $sender || ! $url || ! $basicToken) {
+            // =================================================
+            // 🔹 Vérification config
+            // =================================================
+            if (! $serviceId || ! $secretToken || ! $basicToken || ! $sender || ! $url) {
                 return [
                     'success' => false,
                     'message' => 'Configuration SMS Nimba incomplète.',
@@ -30,6 +36,9 @@ class NimbaSmsService
                 ];
             }
 
+            // =================================================
+            // 🔹 Envoi SMS
+            // =================================================
             $response = Http::withHeaders([
                 'Authorization' => 'Basic ' . $basicToken,
                 'Accept'        => 'application/json',
@@ -49,11 +58,14 @@ class NimbaSmsService
                 ];
             }
 
+            // =================================================
+            // 🔹 Erreur fournisseur
+            // =================================================
             return [
                 'success' => false,
-                'message' => 'Échec envoi SMS.',
-                'error'   => $response->json(),
+                'message' => 'Échec lors de l’envoi du SMS.',
                 'status'  => $response->status(),
+                'error'   => $response->json(),
             ];
 
         } catch (\Throwable $e) {
@@ -62,7 +74,7 @@ class NimbaSmsService
 
             return [
                 'success' => false,
-                'message' => 'Exception lors de l’envoi SMS.',
+                'message' => 'Exception lors de l’envoi du SMS.',
                 'error'   => $e->getMessage(),
             ];
         }
