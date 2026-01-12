@@ -3,66 +3,68 @@
 namespace App\Notifications\Channels;
 
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class NimbaSmsService
 {
-    public function sendOtp(string $telephone, string $message)
+    public function sendOtp(string $telephone, string $message): array
     {
         try {
-            $serviceId   = env('NIMBA_SMS_SERVICE_ID');
-            $secretToken = env('NIMBA_SMS_SECRET_TOKEN');
-            $basicToken  = env('NIMBA_SMS_BASIC_TOKEN');
-            $sender      = env('NIMBA_SMS_SENDER');
-            $url         = env('NIMBA_SMS_URL');
+            $serviceId   = config('services.nimba.service_id');
+            $secretToken = config('services.nimba.secret_token');
+            $basicToken  = config('services.nimba.basic_token');
+            $sender      = config('services.nimba.sender');
+            $url         = config('services.nimba.url');
+
+            if (! $serviceId || ! $secretToken || ! $sender || ! $url || ! $basicToken) {
+                return [
+                    'success' => false,
+                    'message' => 'Configuration SMS Nimba incomplète.',
+                ];
+            }
 
             if (strlen($sender) > 11) {
-                return response()->json([
+                return [
                     'success' => false,
-                    'message' => 'Le sender_name est trop long. Max 11 caractères.',
-                ], 422);
+                    'message' => 'Le sender_name dépasse 11 caractères.',
+                ];
             }
-
-            if (! $serviceId || ! $secretToken || ! $sender || ! $url) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Paramètres de configuration manquants pour le service Nimba.',
-                ], 500);
-            }
-
-            $authHeader = "Basic " . $basicToken;
 
             $response = Http::withHeaders([
-                'Authorization' => $authHeader,
+                'Authorization' => 'Basic ' . $basicToken,
                 'Accept'        => 'application/json',
-            ])->post($url, [
+            ])
+            ->timeout(15)
+            ->post($url, [
                 'sender_name' => $sender,
                 'to'          => [$telephone],
                 'message'     => $message,
             ]);
 
             if ($response->successful()) {
-                return response()->json([
+                return [
                     'success'  => true,
                     'message'  => 'SMS envoyé avec succès.',
-                    'response' => $response->json(),
-                ]);
+                    'provider' => $response->json(),
+                ];
             }
 
-            return response()->json([
+            return [
                 'success' => false,
-                'message' => 'Erreur lors de l\'envoi du SMS.',
-                'error'   => [
-                    'status_code' => $response->status(),
-                    'detail'      => $response->json(),
-                ],
-            ], $response->status());
+                'message' => 'Échec envoi SMS.',
+                'error'   => $response->json(),
+                'status'  => $response->status(),
+            ];
 
-        } catch (\Exception $e) {
-            return response()->json([
+        } catch (\Throwable $e) {
+
+            Log::error('Erreur SMS Nimba : ' . $e->getMessage());
+
+            return [
                 'success' => false,
-                'message' => 'Une erreur est survenue.',
+                'message' => 'Exception lors de l’envoi SMS.',
                 'error'   => $e->getMessage(),
-            ]);
+            ];
         }
     }
 }
