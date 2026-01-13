@@ -1,7 +1,6 @@
 <?php
 
-
-
+use App\Http\Middleware\SetActiveStation;
 use App\Http\Middleware\SetStationDatabase;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -31,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
             // Auth & permissions
             'auth:sanctum'  => EnsureFrontendRequestsAreStateful::class,
+             'active.st'=> SetActiveStation::class,
             'abilities'     => CheckAbilities::class,
             'ability'       => CheckForAnyAbility::class,
         ]);
@@ -42,7 +42,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->priority([
            
             SetStationDatabase::class,
+            
             EnsureFrontendRequestsAreStateful::class,
+            
+            SetActiveStation::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
