@@ -4,6 +4,8 @@ namespace App\Modules\Settings\Services;
 use App\Modules\Caisse\Models\Compte;
 use App\Modules\Settings\Models\Station;
 use App\Modules\Settings\Resources\StationResource;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
@@ -236,4 +238,24 @@ class StationService
             ]);
         }
     }
+
+
+
+  
+
+
+public function activateStation(int $id)
+{
+    Cache::put(
+        'station_active_user_' . Auth::id(),
+        $id,
+        now()->addHours(12)
+    );
+
+    return response()->json([
+        'status'  => 200,
+        'message' => 'Station activée avec succès.',
+    ]);
+}
+
 }

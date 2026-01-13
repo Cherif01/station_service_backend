@@ -13,6 +13,8 @@ Route::middleware(['station.db','auth:sanctum'])->prefix('v1/settings')->group(f
     Route::apiResource('params', ParametrageStationController::class);
     Route::apiResource('pompes', PompeController::class);
     Route::get('pompes-dispo',[PompeController::class,'pompesDisponibles']);
+    Route::get('/activate/stations/{id}/', [StationController::class, 'activateStation']);
+
     
   
 

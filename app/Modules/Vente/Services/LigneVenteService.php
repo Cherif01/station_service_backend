@@ -530,26 +530,7 @@ public function update(int $id, array $data): JsonResponse
      * SUPPRESSION
      * =========================
      */
-    // public function delete(int $id): JsonResponse
-    // {
-    //     try {
-    //         $item = LigneVente::visible()->findOrFail($id);
-    //         $item->delete();
-
-    //         return response()->json([
-    //             'status'  => 200,
-    //             'message' => 'Ligne de vente supprimée avec succès.',
-    //         ], 200);
-
-    //     } catch (Throwable $e) {
-    //         return response()->json([
-    //             'status'  => 500,
-    //             'message' => 'Erreur lors de la suppression de la ligne de vente.',
-    //             'error'   => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
+  
     // public function delete(int $id): JsonResponse
     // {
     //     DB::beginTransaction();

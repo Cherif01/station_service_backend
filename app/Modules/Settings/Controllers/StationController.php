@@ -1,15 +1,15 @@
 <?php
-
 namespace App\Modules\Settings\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Settings\Services\StationService;
 use App\Modules\Settings\Requests\StoreStationRequest;
 use App\Modules\Settings\Requests\UpdateStationRequest;
+use App\Modules\Settings\Services\StationService;
 
 class StationController extends Controller
 {
-    public function __construct(private StationService $service) {}
+    public function __construct(private StationService $service)
+    {}
 
     public function index()
     {
@@ -30,4 +30,10 @@ class StationController extends Controller
     {
         return $this->service->delete($id);
     }
+
+    public function activateStation(int $id)
+    {
+        return $this->service->activateStation($id);
+    }
+
 }
