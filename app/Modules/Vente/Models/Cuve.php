@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
@@ -71,6 +70,33 @@ class Cuve extends Model
      * (100 % basé sur la DERNIÈRE AFFECTATION ACTIVE)
      * =================================================
      */
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     $user = Auth::user();
+
+    //     if (! $user) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     // 🔹 Super admin : tout voir
+    //     if ($user->role === 'super_admin') {
+    //         return $query;
+    //     }
+
+    //     // 🔹 Récupération de la station via DERNIÈRE affectation active
+    //     $stationId = $user->affectations()
+    //         ->where('status', true)
+    //         ->latest('created_at')
+    //         ->value('id_station');
+
+    //     if (! $stationId) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     // 🔹 Admin / Superviseur / Gérant / Pompiste
+    //     // → tous filtrés par leur station d’affectation active
+    //     return $query->where('id_station', $stationId);
+    // }
     public function scopeVisible(Builder $query): Builder
     {
         $user = Auth::user();
@@ -79,12 +105,25 @@ class Cuve extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        // 🔹 Super admin : tout voir
+        /**
+         * 🔹 PRIORITÉ ABSOLUE : station active (middleware)
+         */
+        $stationActiveId = request()->attributes->get('station_active_id');
+
+        if ($stationActiveId) {
+            return $query->where('id_station', $stationActiveId);
+        }
+
+        /**
+         * 🔥 SUPER ADMIN (sans station active)
+         */
         if ($user->role === 'super_admin') {
             return $query;
         }
 
-        // 🔹 Récupération de la station via DERNIÈRE affectation active
+        /**
+         * 🔹 Fallback : station via affectation active
+         */
         $stationId = $user->affectations()
             ->where('status', true)
             ->latest('created_at')
@@ -94,8 +133,6 @@ class Cuve extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        // 🔹 Admin / Superviseur / Gérant / Pompiste
-        // → tous filtrés par leur station d’affectation active
         return $query->where('id_station', $stationId);
     }
 
@@ -129,15 +166,14 @@ class Cuve extends Model
         return $this->belongsTo(User::class, 'modify_by');
     }
 
-
     // App\Modules\Vente\Models\Cuve.php
 
-public function ligneVentes()
-{
-    return $this->hasMany(
-        LigneVente::class,
-        'id_cuve'
-    );
-}
+    public function ligneVentes()
+    {
+        return $this->hasMany(
+            LigneVente::class,
+            'id_cuve'
+        );
+    }
 
 }
