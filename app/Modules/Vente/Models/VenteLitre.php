@@ -1,9 +1,7 @@
 <?php
-
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
-use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -52,6 +50,7 @@ class VenteLitre extends Model
      * SCOPE : VISIBILITÉ DES VENTES
      * =================================================
      */
+
     // public function scopeVisible(Builder $query): Builder
     // {
     //     $user = Auth::user();
@@ -60,53 +59,14 @@ class VenteLitre extends Model
     //         return $query->whereRaw('1 = 0');
     //     }
 
-    //     /**
-    //      * 🔥 SUPER ADMIN
-    //      * → toutes les ventes
-    //      */
+    //     // 🔥 Super admin : tout voir
     //     if ($user->role === 'super_admin') {
     //         return $query;
     //     }
 
-    //     /**
-    //      * 🔴 POMPISTE
-    //      * → ventes de TOUTES les stations
-    //      *   liées à SES affectations (actives ou non)
-    //      */
-    //     if ($user->role === 'pompiste') {
-
-    //         $stationIds = $user->affectations()
-    //             ->pluck('id_station')
-    //             ->filter()
-    //             ->unique()
-    //             ->values()
-    //             ->all();
-
-    //         if (empty($stationIds)) {
-    //             return $query->whereRaw('1 = 0');
-    //         }
-
-    //         return $query->whereHas('cuve', function ($q) use ($stationIds) {
-    //             $q->whereIn('id_station', $stationIds);
-    //         });
-    //     }
-
-    //     /**
-    //      * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-    //      * → ventes de la station issue
-    //      *   de la DERNIÈRE affectation active
-    //      */
-    //     $stationId = $user->affectations()
-    //         ->where('status', true)
-    //         ->latest('created_at')
-    //         ->value('id_station');
-
-    //     if (! $stationId) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
-
-    //     return $query->whereHas('cuve', function ($q) use ($stationId) {
-    //         $q->where('id_station', $stationId);
+    //     // 🔹 Toutes les autres règles passent par la visibilité des cuves
+    //     return $query->whereHas('cuve', function ($q) {
+    //         $q->visible(); // 👈 héritage DIRECT de Cuve::visible()
     //     });
     // }
 
@@ -118,14 +78,31 @@ class VenteLitre extends Model
         return $query->whereRaw('1 = 0');
     }
 
-    // 🔥 Super admin : tout voir
+    /**
+     * =================================================
+     * 🔹 PRIORITÉ : station active (middleware)
+     * =================================================
+     */
+    $stationActiveId = request()->attributes->get('station_active_id');
+
+    if ($stationActiveId) {
+        return $query->whereHas('cuve', function (Builder $q) use ($stationActiveId) {
+            $q->where('id_station', $stationActiveId);
+        });
+    }
+
+    /**
+     * 🔥 SUPER ADMIN (sans station active)
+     */
     if ($user->role === 'super_admin') {
         return $query;
     }
 
-    // 🔹 Toutes les autres règles passent par la visibilité des cuves
+    /**
+     * 🔹 Héritage direct de la visibilité des cuves
+     */
     return $query->whereHas('cuve', function ($q) {
-        $q->visible(); // 👈 héritage DIRECT de Cuve::visible()
+        $q->visible();
     });
 }
 
