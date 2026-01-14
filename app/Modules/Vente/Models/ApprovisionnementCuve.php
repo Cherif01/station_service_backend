@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
@@ -45,54 +44,59 @@ class ApprovisionnementCuve extends Model
      * (basé sur la DERNIÈRE affectation active)
      * =========================
      */
-    // public function scopeVisible(Builder $query): Builder
-    // {
-    //     $user = Auth::user();
 
-    //     if (! $user) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
+//     public function scopeVisible(Builder $query): Builder
+// {
+//     $user = Auth::user();
 
-    //     // Super admin : tout voir
-    //     if ($user->role === 'super_admin') {
-    //         return $query;
-    //     }
+//     if (! $user) {
+//         return $query->whereRaw('1 = 0');
+//     }
 
-    //     // Station issue de la dernière affectation
-    //     $stationId = $user->affectations()
-    //         ->where('status', true)
-    //         ->latest('created_at')
-    //         ->value('id_station');
+//     // 🔥 Super admin : tout voir
+//     if ($user->role === 'super_admin') {
+//         return $query;
+//     }
 
-    //     if (! $stationId) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
-
-    //     // Filtrage via la cuve
-    //     return $query->whereHas('cuve', function (Builder $q) use ($stationId) {
-    //         $q->where('id_station', $stationId);
-    //     });
-    // }
+//     // 🔹 Héritage direct de la visibilité des cuves
+//     return $query->whereHas('cuve', function (Builder $q) {
+//         $q->visible();
+//     });
+// }
 
     public function scopeVisible(Builder $query): Builder
-{
-    $user = Auth::user();
+    {
+        $user = Auth::user();
 
-    if (! $user) {
-        return $query->whereRaw('1 = 0');
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        /**
+         * 🔹 PRIORITÉ ABSOLUE : station active (middleware)
+         */
+        $stationActiveId = request()->attributes->get('station_active_id');
+
+        if ($stationActiveId) {
+            return $query->whereHas('cuve', function (Builder $q) use ($stationActiveId) {
+                $q->where('id_station', $stationActiveId);
+            });
+        }
+
+        /**
+         * 🔥 SUPER ADMIN (sans station active)
+         */
+        if ($user->role === 'super_admin') {
+            return $query;
+        }
+
+        /**
+         * 🔹 Héritage direct de la visibilité des cuves
+         */
+        return $query->whereHas('cuve', function (Builder $q) {
+            $q->visible();
+        });
     }
-
-    // 🔥 Super admin : tout voir
-    if ($user->role === 'super_admin') {
-        return $query;
-    }
-
-    // 🔹 Héritage direct de la visibilité des cuves
-    return $query->whereHas('cuve', function (Builder $q) {
-        $q->visible();
-    });
-}
-
 
     /**
      * =========================
