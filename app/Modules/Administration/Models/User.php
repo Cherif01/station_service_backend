@@ -169,7 +169,8 @@ class User extends Authenticatable
      * 🔹 STATION ACTIVE (via middleware)
      * =================================================
      */
-    $activeStationId = cache()->get('active_station_id');
+  $activeStationId = cache()->get('station_active_user_' . Auth::id());
+
 
     switch ($auth->role) {
 
