@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Models;
 
 use App\Modules\Administration\Models\User;
@@ -42,7 +41,7 @@ class Pompe extends Model
 
             // 🔹 Référence automatique
             if (empty($m->reference)) {
-                $nextId = self::withoutGlobalScopes()->max('id') + 1;
+                $nextId       = self::withoutGlobalScopes()->max('id') + 1;
                 $m->reference = 'PMP-' . str_pad($nextId, 3, '0', STR_PAD_LEFT);
             }
         });
@@ -60,6 +59,57 @@ class Pompe extends Model
      * SCOPE : VISIBILITÉ DES POMPES
      * =================================================
      */
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     $user = Auth::user();
+
+    //     if (! $user) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     switch ($user->role) {
+
+    //         /**
+    //          * 🔥 SUPER ADMIN
+    //          */
+    //         case 'super_admin':
+    //             return $query;
+
+    //         /**
+    //          * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+    //          * → pompes de leur station (via affectation active)
+    //          */
+    //         case 'admin':
+    //         case 'superviseur':
+    //         case 'gerant':
+
+    //             $stationId = $user->affectations()
+    //                 ->where('status', true)
+    //                 ->latest('created_at')
+    //                 ->value('id_station');
+
+    //             if (! $stationId) {
+    //                 return $query->whereRaw('1 = 0');
+    //             }
+
+    //             return $query->where('id_station', $stationId);
+
+    //         /**
+    //          * 🔴 POMPISTE
+    //          * → uniquement la pompe à laquelle il est affecté
+    //          */
+    //         case 'pompiste':
+
+    //             return $query->whereHas('affectations', function (Builder $q) use ($user) {
+    //                 $q->where('id_user', $user->id)
+    //                   ->where('status', true);
+    //             });
+
+    //         default:
+    //             return $query->whereRaw('1 = 0');
+    //     }
+    // }
+
     public function scopeVisible(Builder $query): Builder
     {
         $user = Auth::user();
@@ -68,44 +118,51 @@ class Pompe extends Model
             return $query->whereRaw('1 = 0');
         }
 
+        // 🔹 Station active injectée par middleware
+        $stationActiveId = request()->attributes->get('station_active_id');
+
         switch ($user->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             */
+                 * 🔥 SUPER ADMIN
+                 * → pompes de la station ACTIVE uniquement
+                 */
             case 'super_admin':
-                return $query;
+
+                if (! $stationActiveId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id_station', $stationActiveId);
 
             /**
-             * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-             * → pompes de leur station (via affectation active)
-             */
+                 * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+                 * → pompes de la station ACTIVE
+                 */
             case 'admin':
             case 'superviseur':
             case 'gerant':
 
-                $stationId = $user->affectations()
-                    ->where('status', true)
-                    ->latest('created_at')
-                    ->value('id_station');
-
-                if (! $stationId) {
+                if (! $stationActiveId) {
                     return $query->whereRaw('1 = 0');
                 }
 
-                return $query->where('id_station', $stationId);
+                return $query->where('id_station', $stationActiveId);
 
             /**
-             * 🔴 POMPISTE
-             * → uniquement la pompe à laquelle il est affecté
-             */
+                 * 🔴 POMPISTE
+                 * → uniquement la pompe à laquelle il est affecté
+                 */
             case 'pompiste':
 
                 return $query->whereHas('affectations', function (Builder $q) use ($user) {
                     $q->where('id_user', $user->id)
-                      ->where('status', true);
+                        ->where('status', true);
                 });
 
+            /**
+                 * ❌ AUTRES CAS
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
