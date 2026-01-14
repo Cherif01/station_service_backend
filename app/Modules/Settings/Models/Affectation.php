@@ -48,53 +48,109 @@ class Affectation extends Model
      * SCOPE LOCAL : VISIBILITÉ DES AFFECTATIONS
      * =================================================
      */
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     $user = Auth::user();
+
+    //     if (! $user) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     switch ($user->role) {
+
+    //         /**
+    //          * 🔥 SUPER ADMIN
+    //          * → toutes les affectations
+    //          */
+    //         case 'super_admin':
+    //             return $query;
+
+    //         /**
+    //          * 🔵 ADMIN
+    //          * 🟣 SUPERVISEUR
+    //          * 🟡 GÉRANT
+    //          * → affectations de leur station
+    //          */
+    //         case 'admin':
+    //         case 'superviseur':
+    //         case 'gerant':
+
+    //             if (! $user->id_station) {
+    //                 return $query->whereRaw('1 = 0');
+    //             }
+
+    //             return $query->where('id_station', $user->id_station);
+
+    //         /**
+    //          * 🔴 POMPISTE
+    //          * → uniquement ses affectations
+    //          */
+    //         case 'pompiste':
+    //             return $query->where('id_user', $user->id);
+
+    //         /**
+    //          * ❌ AUTRES CAS
+    //          */
+    //         default:
+    //             return $query->whereRaw('1 = 0');
+    //     }
+    // }
     public function scopeVisible(Builder $query): Builder
-    {
-        $user = Auth::user();
+{
+    $user = Auth::user();
 
-        if (! $user) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        switch ($user->role) {
-
-            /**
-             * 🔥 SUPER ADMIN
-             * → toutes les affectations
-             */
-            case 'super_admin':
-                return $query;
-
-            /**
-             * 🔵 ADMIN
-             * 🟣 SUPERVISEUR
-             * 🟡 GÉRANT
-             * → affectations de leur station
-             */
-            case 'admin':
-            case 'superviseur':
-            case 'gerant':
-
-                if (! $user->id_station) {
-                    return $query->whereRaw('1 = 0');
-                }
-
-                return $query->where('id_station', $user->id_station);
-
-            /**
-             * 🔴 POMPISTE
-             * → uniquement ses affectations
-             */
-            case 'pompiste':
-                return $query->where('id_user', $user->id);
-
-            /**
-             * ❌ AUTRES CAS
-             */
-            default:
-                return $query->whereRaw('1 = 0');
-        }
+    if (! $user) {
+        return $query->whereRaw('1 = 0');
     }
+
+    // 🔹 Station active injectée par middleware
+    $stationActiveId = request()->attributes->get('station_active_id');
+
+    switch ($user->role) {
+
+        /**
+         * 🔥 SUPER ADMIN
+         * → affectations de la station ACTIVE
+         */
+        case 'super_admin':
+
+            if (! $stationActiveId) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query->where('id_station', $stationActiveId);
+
+        /**
+         * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+         * → affectations de la station ACTIVE
+         */
+        case 'admin':
+        case 'superviseur':
+        case 'gerant':
+
+            if (! $stationActiveId) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query->where('id_station', $stationActiveId);
+
+        /**
+         * 🔴 POMPISTE
+         * → uniquement SES affectations actives
+         */
+        case 'pompiste':
+
+            return $query->where('id_user', $user->id)
+                         ->where('status', true);
+
+        /**
+         * ❌ AUTRES CAS
+         */
+        default:
+            return $query->whereRaw('1 = 0');
+    }
+}
+
 
     /**
      * =================================================
