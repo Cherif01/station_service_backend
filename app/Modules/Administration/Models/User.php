@@ -72,192 +72,192 @@ class User extends Authenticatable
      * SCOPE : VISIBILITÉ DES UTILISATEURS
      * =================================================
      */
-    // public function scopeVisible(Builder $query): Builder
-    // {
-    //     $auth = Auth::user();
-
-    //     if (! $auth) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
-
-    //     switch ($auth->role) {
-
-    //         /**
-    //          * 🔥 SUPER ADMIN
-    //          * → voit tout
-    //          */
-    //         case 'super_admin':
-    //             return $query;
-
-    //         /**
-    //          * 🔵 ADMIN
-    //          * 🟡 GÉRANT
-    //          * 🟣 SUPERVISEUR
-    //          * → utilisateurs liés à la station
-    //          */
-    //         case 'admin':
-    //         case 'gerant':
-    //         case 'superviseur':
-
-    //             $stationId = $auth->id_station
-    //                 ?? optional($auth->activeAffectation())->id_station;
-
-    //             if (! $stationId) {
-    //                 return $query->whereRaw('1 = 0');
-    //             }
-
-    //             return $query->where(function (Builder $q) use ($stationId) {
-
-    //                 // Utilisateurs créés pour la station
-    //                 $q->where('id_station', $stationId)
-
-    //                     // OU utilisateurs affectés à la station
-    //                     ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
-    //                         $qa->where('id_station', $stationId)
-    //                             ->where('status', true);
-    //                     });
-    //             });
-
-    //         /**
-    //          * 🔴 POMPISTE
-    //          * → même pompe si possible
-    //          * → sinon même station
-    //          */
-    //         case 'pompiste':
-
-    //             $affectation = $auth->activeAffectation();
-
-    //             if (! $affectation) {
-    //                 return $query->whereRaw('1 = 0');
-    //             }
-
-    //             // Priorité : même pompe
-    //             if (! empty($affectation->id_pompe)) {
-    //                 return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
-    //                     $q->where('id_pompe', $affectation->id_pompe)
-    //                         ->where('status', true);
-    //                 });
-    //             }
-
-    //             // Fallback : même station
-    //             if (! empty($affectation->id_station)) {
-    //                 return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
-    //                     $q->where('id_station', $affectation->id_station)
-    //                         ->where('status', true);
-    //                 });
-    //             }
-
-    //             return $query->whereRaw('1 = 0');
-
-    //         /**
-    //          * ❌ AUTRES CAS
-    //          */
-    //         default:
-    //             return $query->whereRaw('1 = 0');
-    //     }
-    // }
     public function scopeVisible(Builder $query): Builder
-{
-    $auth = Auth::user();
+    {
+        $auth = Auth::user();
 
-    if (! $auth) {
-        return $query->whereRaw('1 = 0');
-    }
-
-    /**
-     * =================================================
-     * 🔹 STATION ACTIVE (via middleware)
-     * =================================================
-     */
-  $activeStationId = cache()->get('station_active_user_' . Auth::id());
-
-
-    switch ($auth->role) {
-
-        /**
-         * 🔥 SUPER ADMIN
-         */
-        case 'super_admin':
-
-            // 👉 S’il a activé une station, il agit comme un gérant
-            if ($activeStationId) {
-                return $query->where(function (Builder $q) use ($activeStationId) {
-
-                    $q->where('id_station', $activeStationId)
-
-                      ->orWhereHas('affectations', function (Builder $qa) use ($activeStationId) {
-                          $qa->where('id_station', $activeStationId)
-                             ->where('status', true);
-                      });
-                });
-            }
-
-            // 👉 Sinon : voit tout (comportement actuel inchangé)
-            return $query;
-
-        /**
-         * 🔵 ADMIN
-         * 🟡 GÉRANT
-         * 🟣 SUPERVISEUR
-         */
-        case 'admin':
-        case 'gerant':
-        case 'superviseur':
-
-            $stationId = $activeStationId
-                ?? $auth->id_station
-                ?? optional($auth->activeAffectation())->id_station;
-
-            if (! $stationId) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            return $query->where(function (Builder $q) use ($stationId) {
-
-                $q->where('id_station', $stationId)
-
-                  ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
-                      $qa->where('id_station', $stationId)
-                         ->where('status', true);
-                  });
-            });
-
-        /**
-         * 🔴 POMPISTE
-         */
-        case 'pompiste':
-
-            $affectation = $auth->activeAffectation();
-
-            if (! $affectation) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            // Priorité : même pompe
-            if (! empty($affectation->id_pompe)) {
-                return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
-                    $q->where('id_pompe', $affectation->id_pompe)
-                      ->where('status', true);
-                });
-            }
-
-            // Fallback : même station
-            if (! empty($affectation->id_station)) {
-                return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
-                    $q->where('id_station', $affectation->id_station)
-                      ->where('status', true);
-                });
-            }
-
+        if (! $auth) {
             return $query->whereRaw('1 = 0');
+        }
 
-        /**
-         * ❌ AUTRES CAS
-         */
-        default:
-            return $query->whereRaw('1 = 0');
+        switch ($auth->role) {
+
+            /**
+             * 🔥 SUPER ADMIN
+             * → voit tout
+             */
+            case 'super_admin':
+                return $query;
+
+            /**
+             * 🔵 ADMIN
+             * 🟡 GÉRANT
+             * 🟣 SUPERVISEUR
+             * → utilisateurs liés à la station
+             */
+            case 'admin':
+            case 'gerant':
+            case 'superviseur':
+
+                $stationId = $auth->id_station
+                    ?? optional($auth->activeAffectation())->id_station;
+
+                if (! $stationId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where(function (Builder $q) use ($stationId) {
+
+                    // Utilisateurs créés pour la station
+                    $q->where('id_station', $stationId)
+
+                        // OU utilisateurs affectés à la station
+                        ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
+                            $qa->where('id_station', $stationId)
+                                ->where('status', true);
+                        });
+                });
+
+            /**
+             * 🔴 POMPISTE
+             * → même pompe si possible
+             * → sinon même station
+             */
+            case 'pompiste':
+
+                $affectation = $auth->activeAffectation();
+
+                if (! $affectation) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                // Priorité : même pompe
+                if (! empty($affectation->id_pompe)) {
+                    return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
+                        $q->where('id_pompe', $affectation->id_pompe)
+                            ->where('status', true);
+                    });
+                }
+
+                // Fallback : même station
+                if (! empty($affectation->id_station)) {
+                    return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
+                        $q->where('id_station', $affectation->id_station)
+                            ->where('status', true);
+                    });
+                }
+
+                return $query->whereRaw('1 = 0');
+
+            /**
+             * ❌ AUTRES CAS
+             */
+            default:
+                return $query->whereRaw('1 = 0');
+        }
     }
-}
+//     public function scopeVisible(Builder $query): Builder
+// {
+//     $auth = Auth::user();
+
+//     if (! $auth) {
+//         return $query->whereRaw('1 = 0');
+//     }
+
+//     /**
+//      * =================================================
+//      * 🔹 STATION ACTIVE (via middleware)
+//      * =================================================
+//      */
+//   $activeStationId = cache()->get('station_active_user_' . Auth::id());
+
+
+//     switch ($auth->role) {
+
+//         /**
+//          * 🔥 SUPER ADMIN
+//          */
+//         case 'super_admin':
+
+//             // 👉 S’il a activé une station, il agit comme un gérant
+//             if ($activeStationId) {
+//                 return $query->where(function (Builder $q) use ($activeStationId) {
+
+//                     $q->where('id_station', $activeStationId)
+
+//                       ->orWhereHas('affectations', function (Builder $qa) use ($activeStationId) {
+//                           $qa->where('id_station', $activeStationId)
+//                              ->where('status', true);
+//                       });
+//                 });
+//             }
+
+//             // 👉 Sinon : voit tout (comportement actuel inchangé)
+//             return $query;
+
+//         /**
+//          * 🔵 ADMIN
+//          * 🟡 GÉRANT
+//          * 🟣 SUPERVISEUR
+//          */
+//         case 'admin':
+//         case 'gerant':
+//         case 'superviseur':
+
+//             $stationId = $activeStationId
+//                 ?? $auth->id_station
+//                 ?? optional($auth->activeAffectation())->id_station;
+
+//             if (! $stationId) {
+//                 return $query->whereRaw('1 = 0');
+//             }
+
+//             return $query->where(function (Builder $q) use ($stationId) {
+
+//                 $q->where('id_station', $stationId)
+
+//                   ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
+//                       $qa->where('id_station', $stationId)
+//                          ->where('status', true);
+//                   });
+//             });
+
+//         /**
+//          * 🔴 POMPISTE
+//          */
+//         case 'pompiste':
+
+//             $affectation = $auth->activeAffectation();
+
+//             if (! $affectation) {
+//                 return $query->whereRaw('1 = 0');
+//             }
+
+//             // Priorité : même pompe
+//             if (! empty($affectation->id_pompe)) {
+//                 return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
+//                     $q->where('id_pompe', $affectation->id_pompe)
+//                       ->where('status', true);
+//                 });
+//             }
+
+//             // Fallback : même station
+//             if (! empty($affectation->id_station)) {
+//                 return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
+//                     $q->where('id_station', $affectation->id_station)
+//                       ->where('status', true);
+//                 });
+//             }
+
+//             return $query->whereRaw('1 = 0');
+
+//         /**
+//          * ❌ AUTRES CAS
+//          */
+//         default:
+//             return $query->whereRaw('1 = 0');
+//     }
+// }
 
 
     /**
