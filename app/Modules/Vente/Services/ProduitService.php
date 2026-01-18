@@ -688,8 +688,8 @@ class ProduitService
                 ->get()
                 ->map(fn($p) => [
                     'date'      => $p->created_at?->toDateString(),
-                    'qte_perte' => (float) $p->qte_perte,
-                    'motif'     => $p->motif,
+                    'qte_perte' => (float) $p->quantite_perdue,
+                    'motif'     => $p->commentaire,
                 ])
                 ->toArray();
 
