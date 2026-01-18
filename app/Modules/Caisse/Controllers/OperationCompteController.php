@@ -1,12 +1,12 @@
 <?php
-
 namespace App\Modules\Caisse\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Caisse\Services\OperationCompteService;
+use App\Modules\Caisse\Requests\ConfirmTransfertCompteRequest;
 use App\Modules\Caisse\Requests\StoreOperationCompteRequest;
 use App\Modules\Caisse\Requests\StoreTransfertCompteRequest;
-use App\Modules\Caisse\Requests\ConfirmTransfertCompteRequest;
+use App\Modules\Caisse\Services\OperationCompteService;
+use illuminate\Http\Request;
 
 class OperationCompteController extends Controller
 {
@@ -21,7 +21,7 @@ class OperationCompteController extends Controller
     {
         return $this->service->getAll();
     }
-     public function listeTransfet()
+    public function listeTransfet()
     {
         return $this->service->getAll1();
     }
@@ -64,5 +64,20 @@ class OperationCompteController extends Controller
     public function cancel(ConfirmTransfertCompteRequest $request)
     {
         return $this->service->cancel($request->validated()['reference']);
+    }
+
+    public function getAllByPeriode(Request $request)
+    {
+        $data = $request->only(['date_debut', 'date_fin']);
+
+        return $this->service->getAllByPeriode($data);
+    }
+    //getAllTransfertsByPeriode
+
+    public function getAllTransfertsByPeriode(Request $request)
+    {
+        $data = $request->only(['date_debut', 'date_fin']);
+
+        return $this->service->getAllTransfertsByPeriode($data);
     }
 }

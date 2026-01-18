@@ -6,7 +6,7 @@ use App\Modules\Caisse\Controllers\TypeOperationController;
 use Illuminate\Support\Facades\Route;
 
 // Define API routes for Caisse module here
-Route::middleware(['station.db', 'auth:sanctum'])
+Route::middleware(['station.db', 'auth:sanctum', 'active.st'])
     ->prefix('v1/caisse')
     ->group(function () {
 
@@ -23,7 +23,7 @@ Route::middleware(['station.db', 'auth:sanctum'])
             'operations/transfert',
             [OperationCompteController::class, 'transfer']
         );
-          Route::get(
+        Route::get(
             'transfert',
             [OperationCompteController::class, 'listeTransfet']
         );
@@ -42,6 +42,16 @@ Route::middleware(['station.db', 'auth:sanctum'])
         Route::post(
             'operations/transfert/cancel',
             [OperationCompteController::class, 'cancel']
+        );
+
+        Route::get(
+            'operations-comptes/periode',
+            [OperationCompteController::class, 'getAllByPeriode']
+        );
+
+        Route::get(
+            'transfert-intercomptes/periode',
+            [OperationCompteController::class, 'getAllTransfertsByPeriode']
         );
 
     });

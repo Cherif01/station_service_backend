@@ -40,6 +40,50 @@ class OperationCompteService
             ], 500);
         }
     }
+/* la liste des operations orndinaires par date
+*/
+    public function getAllByPeriode(array $data)
+    {
+        try {
+
+            $dateDebut = $data['date_debut'] ?? null;
+            $dateFin   = $data['date_fin'] ?? null;
+
+            $query = OperationCompte::visible()
+                ->whereDoesntHave('typeOperation', function ($q) {
+                    $q->where('nature', 2);
+                })
+                ->with([
+                    'typeOperation',
+                    'compte.station',
+                    'createdBy',
+                ]);
+
+            // 🔹 Filtre par dates si fournies
+            if ($dateDebut && $dateFin) {
+                $query->whereBetween('created_at', [
+                    $dateDebut . ' 00:00:00',
+                    $dateFin . ' 23:59:59',
+                ]);
+            }
+
+            $operations = $query
+                ->orderByDesc('created_at')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data'   => OperationCompteResource::collection($operations),
+            ], 200);
+
+        } catch (Throwable $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des opérations par période.',
+            ], 500);
+        }
+    }
 
     public function getAll1()
     {
@@ -67,6 +111,51 @@ class OperationCompteService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des transferts.',
+            ], 500);
+        }
+    }
+    /* la liste des operations inter comptes entre deux dates 
+  */
+
+    public function getAllTransfertsByPeriode(array $data)
+    {
+        try {
+
+            $dateDebut = $data['date_debut'] ?? null;
+            $dateFin   = $data['date_fin'] ?? null;
+
+            $query = OperationCompte::visible()
+                ->whereHas('typeOperation', fn($q) => $q->where('nature', 2))
+                ->with([
+                    'typeOperation',
+                    'source.station',
+                    'destination.station',
+                    'createdBy',
+                    'modifiedBy',
+                ]);
+
+            // 🔹 Filtre par période
+            if ($dateDebut && $dateFin) {
+                $query->whereBetween('created_at', [
+                    $dateDebut . ' 00:00:00',
+                    $dateFin . ' 23:59:59',
+                ]);
+            }
+
+            $operations = $query
+                ->orderByDesc('created_at')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data'   => OperationTransfertResource::collection($operations),
+            ], 200);
+
+        } catch (Throwable $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des transferts par période.',
             ], 500);
         }
     }

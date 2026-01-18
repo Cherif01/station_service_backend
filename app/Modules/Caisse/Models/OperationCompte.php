@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Caisse\Models;
 
 use App\Modules\Administration\Models\User;
@@ -52,9 +51,9 @@ class OperationCompte extends Model
                  * ex : OPC-20251229-A9F3KQ
                  */
                 $m->reference = 'OPC-'
-                    . now()->format('Ymd')
-                    . '-'
-                    . strtoupper(Str::random(6));
+                . now()->format('Ymd')
+                . '-'
+                . strtoupper(Str::random(6));
             }
         });
 
@@ -77,71 +76,140 @@ class OperationCompte extends Model
 
     // public function scopeVisible(Builder $query): Builder
     // {
-    //     return $query->whereHas('compte', fn ($q) => $q->visible());
+    //     $user = Auth::user();
+
+    //     if (! $user) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     /**
+    //      * 🔥 SUPER ADMIN → tout voir
+    //      */
+    //     if ($user->role === 'super_admin') {
+    //         return $query;
+    //     }
+
+    //     /**
+    //      * =================================================
+    //      * 🔹 Station courante de l'utilisateur
+    //      * =================================================
+    //      */
+    //     $stationId = $user->id_station ?? $user->affectations()
+    //         ->where('status', true)
+    //         ->latest('created_at')
+    //         ->value('id_station');
+
+    //     if (! $stationId) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     /**
+    //      * =================================================
+    //      * 🔎 VISIBILITÉ OPÉRATIONS
+    //      * =================================================
+    //      */
+    //     return $query->where(function (Builder $q) use ($stationId) {
+
+    //         /**
+    //          * 🔴 CAS 1 : TRANSFERT ÉMIS
+    //          * → station = source
+    //          */
+    //         $q->whereHas('source', function (Builder $qs) use ($stationId) {
+    //             $qs->where('id_station', $stationId);
+    //         })
+
+    //         /**
+    //          * 🟢 CAS 2 : TRANSFERT REÇU
+    //          * → station = destination
+    //          */
+    //             ->orWhereHas('destination', function (Builder $qd) use ($stationId) {
+    //                 $qd->where('id_station', $stationId);
+    //             })
+
+    //         /**
+    //          * 🔵 CAS 3 : OPÉRATIONS SIMPLES
+    //          * → station = compte
+    //          */
+    //             ->orWhereHas('compte', function (Builder $qc) use ($stationId) {
+    //                 $qc->where('id_station', $stationId);
+    //             });
+    //     });
     // }
+
     public function scopeVisible(Builder $query): Builder
-{
-    $user = Auth::user();
+    {
+        $user = Auth::user();
 
-    if (! $user) {
-        return $query->whereRaw('1 = 0');
-    }
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
 
-    /**
-     * 🔥 SUPER ADMIN → tout voir
-     */
-    if ($user->role === 'super_admin') {
-        return $query;
-    }
+        /**
+         * =================================================
+         * 🔹 PRIORITÉ ABSOLUE : STATION ACTIVE
+         * =================================================
+         */
+        $stationActiveId = request()->attributes->get('station_active_id');
 
-    /**
-     * =================================================
-     * 🔹 Station courante de l'utilisateur
-     * =================================================
-     */
-    $stationId = $user->id_station
-        ?? $user->affectations()
+        if ($stationActiveId) {
+            return $query->where(function (Builder $q) use ($stationActiveId) {
+
+                // 🔴 Transfert émis
+                $q->whereHas('source', function (Builder $qs) use ($stationActiveId) {
+                    $qs->where('id_station', $stationActiveId);
+                })
+
+                // 🟢 Transfert reçu
+                    ->orWhereHas('destination', function (Builder $qd) use ($stationActiveId) {
+                        $qd->where('id_station', $stationActiveId);
+                    })
+
+                // 🔵 Opération simple
+                    ->orWhereHas('compte', function (Builder $qc) use ($stationActiveId) {
+                        $qc->where('id_station', $stationActiveId);
+                    });
+            });
+        }
+
+        /**
+         * =================================================
+         * 🔥 SUPER ADMIN (sans station active)
+         * =================================================
+         */
+        if ($user->role === 'super_admin') {
+            return $query;
+        }
+
+        /**
+         * =================================================
+         * 🔵 ADMIN / 🟡 GÉRANT / 🟣 SUPERVISEUR
+         * → station via affectation active
+         * =================================================
+         */
+        $stationId = $user->id_station ?? $user->affectations()
             ->where('status', true)
             ->latest('created_at')
             ->value('id_station');
 
-    if (! $stationId) {
-        return $query->whereRaw('1 = 0');
-    }
+        if (! $stationId) {
+            return $query->whereRaw('1 = 0');
+        }
 
-    /**
-     * =================================================
-     * 🔎 VISIBILITÉ OPÉRATIONS
-     * =================================================
-     */
-    return $query->where(function (Builder $q) use ($stationId) {
+        return $query->where(function (Builder $q) use ($stationId) {
 
-        /**
-         * 🔴 CAS 1 : TRANSFERT ÉMIS
-         * → station = source
-         */
-        $q->whereHas('source', function (Builder $qs) use ($stationId) {
-            $qs->where('id_station', $stationId);
-        })
+            $q->whereHas('source', function (Builder $qs) use ($stationId) {
+                $qs->where('id_station', $stationId);
+            })
 
-        /**
-         * 🟢 CAS 2 : TRANSFERT REÇU
-         * → station = destination
-         */
-        ->orWhereHas('destination', function (Builder $qd) use ($stationId) {
-            $qd->where('id_station', $stationId);
-        })
+                ->orWhereHas('destination', function (Builder $qd) use ($stationId) {
+                    $qd->where('id_station', $stationId);
+                })
 
-        /**
-         * 🔵 CAS 3 : OPÉRATIONS SIMPLES
-         * → station = compte
-         */
-        ->orWhereHas('compte', function (Builder $qc) use ($stationId) {
-            $qc->where('id_station', $stationId);
+                ->orWhereHas('compte', function (Builder $qc) use ($stationId) {
+                    $qc->where('id_station', $stationId);
+                });
         });
-    });
-}
-
+    }
 
     /**
      * =================================================

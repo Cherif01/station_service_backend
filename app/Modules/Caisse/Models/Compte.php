@@ -56,6 +56,29 @@ class Compte extends Model
     /**
      * 🔹 Visibilité par station (comme tout ton projet)
      */
+    // public function scopeVisible(Builder $query): Builder
+    // {
+    //     $user = Auth::user();
+
+    //     if (! $user) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     if ($user->role === 'super_admin') {
+    //         return $query;
+    //     }
+
+    //     $stationId = $user->affectations()
+    //         ->where('status', true)
+    //         ->latest('created_at')
+    //         ->value('id_station');
+
+    //     if (! $stationId) {
+    //         return $query->whereRaw('1 = 0');
+    //     }
+
+    //     return $query->where('id_station', $stationId);
+    // }
     public function scopeVisible(Builder $query): Builder
     {
         $user = Auth::user();
@@ -64,10 +87,28 @@ class Compte extends Model
             return $query->whereRaw('1 = 0');
         }
 
+        /**
+         * =================================================
+         * 🔹 PRIORITÉ : station active (middleware)
+         * =================================================
+         */
+        $stationActiveId = request()->attributes->get('station_active_id');
+
+        if ($stationActiveId) {
+            return $query->where('id_station', $stationActiveId);
+        }
+
+        /**
+         * 🔥 SUPER ADMIN (sans station active)
+         */
         if ($user->role === 'super_admin') {
             return $query;
         }
 
+        /**
+         * 🔵 ADMIN / 🟡 GÉRANT / 🟣 SUPERVISEUR
+         * → station issue de l’affectation active
+         */
         $stationId = $user->affectations()
             ->where('status', true)
             ->latest('created_at')
