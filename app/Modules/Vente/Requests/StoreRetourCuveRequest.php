@@ -32,6 +32,7 @@ class StoreRetourCuveRequest extends FormRequest
                 'string',
                 'max:255',
             ],
+             'pu_unitaire'  => ['required', 'numeric', 'min:0'],
         ];
     }
 
