@@ -1,9 +1,8 @@
 <?php
-
 namespace App\Modules\Vente\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
 
 class StoreRetourCuveRequest extends FormRequest
@@ -16,12 +15,12 @@ class StoreRetourCuveRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_cuve' => [
+            'id_cuve'     => [
                 'required',
                 'exists:cuves,id',
             ],
 
-            'qte_appro' => [
+            'qte_appro'   => [
                 'required',
                 'numeric',
                 'min:0.01',
@@ -32,7 +31,7 @@ class StoreRetourCuveRequest extends FormRequest
                 'string',
                 'max:255',
             ],
-             'pu_unitaire'  => ['required', 'numeric', 'min:0'],
+            'pu_unitaire' => ['required', 'numeric', 'min:0'],
         ];
     }
 

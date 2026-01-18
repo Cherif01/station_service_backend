@@ -45,7 +45,7 @@ class ApprovisionnementCuveController extends Controller
         );
     }
 
-      public function retourcuve(StoreRetourCuveRequest $request)
+      public function retourcuve(ApprovisionnementCuveRequest $request)
     {
         return $this->service->retourcuve(
             $request->validated()
