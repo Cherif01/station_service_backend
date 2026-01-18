@@ -342,14 +342,12 @@ class ProduitService
     }
 
 
-   
-
 public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
 {
     $data = [];
 
-    $dateDebut = Carbon::parse($dateDebut)->toDateString();
-    $dateFin   = Carbon::parse($dateFin)->toDateString();
+    $start = Carbon::parse($dateDebut)->startOfDay();
+    $end   = Carbon::parse($dateFin)->endOfDay();
 
     $cuves = Cuve::visible()
         ->where('status', true)
@@ -361,48 +359,48 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
 
         /**
          * =========================
-         * 🔹 APPROVISIONNEMENTS
+         * 🔹 APPROVISIONNEMENTS (LIGNES)
          * =========================
          */
         $approvisionnements = ApprovisionnementCuve::visible()
             ->where('id_cuve', $cuve->id)
-            ->whereBetween('created_at', [$dateDebut, $dateFin])
-            ->orderBy('created_at')
+            ->whereBetween('created_at', [$start, $end])
+            ->orderBy('created_at', 'asc')
             ->get()
             ->map(fn ($a) => [
-                'date'        => $a->created_at->toDateString(),
+                'date'        => $a->created_at?->toDateString(),
                 'qte_appro'   => (float) $a->qte_appro,
-                'pu_unitaire' => (float) $a->pu_unitaire,
+                'pu_unitaire' => (float) ($a->pu_unitaire ?? 0),
                 'type_appro'  => $a->type_appro,
             ])
             ->toArray();
 
         /**
          * =========================
-         * 🔹 PERTES
+         * 🔹 PERTES (LIGNES)
          * =========================
          */
         $pertes = PerteCuve::visible()
             ->where('id_cuve', $cuve->id)
-            ->whereBetween('created_at', [$dateDebut, $dateFin])
-            ->orderBy('created_at')
+            ->whereBetween('created_at', [$start, $end])
+            ->orderBy('created_at', 'asc')
             ->get()
             ->map(fn ($p) => [
-                'date'      => $p->created_at->toDateString(),
+                'date'      => $p->created_at?->toDateString(),
                 'qte_perte' => (float) $p->qte_perte,
-                'motif'     => $p->commentaire,
+                'motif'     => $p->motif,
             ])
             ->toArray();
 
         /**
          * =========================
-         * 🔹 JAUGEAGES + ÉCARTS
+         * 🔹 JAUGEAGE (VENTE_LITRE) + ÉCART LIGNE/LIGNE
          * =========================
          */
         $jaugeagesBruts = VenteLitre::visible()
             ->where('id_cuve', $cuve->id)
-            ->whereBetween('created_at', [$dateDebut, $dateFin])
-            ->orderBy('created_at')
+            ->whereBetween('created_at', [$start, $end])
+            ->orderBy('created_at', 'asc')
             ->get();
 
         $jaugeages = [];
@@ -417,7 +415,7 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
                 : $stock - $previousStock;
 
             $jaugeages[] = [
-                'date'  => $j->created_at->toDateString(),
+                'date'  => $j->created_at?->toDateString(),
                 'stock' => $stock,
                 'ecart' => (float) $ecart,
             ];
@@ -427,7 +425,7 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
 
         /**
          * =========================
-         * 🔹 CALCULS SYNTHÈSE
+         * 🔹 SYNTHÈSE (MÊME IDÉE QUE TON JOURNALIER)
          * =========================
          */
         $stockMatin = $jaugeages[0]['stock'] ?? 0;
@@ -444,25 +442,17 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
 
         $sorties = LigneVente::visible()
             ->where('id_cuve', $cuve->id)
-            ->whereBetween('created_at', [$dateDebut, $dateFin])
+            ->whereBetween('created_at', [$start, $end])
             ->sum('qte_vendu');
 
-        $stockTheorique =
-            $stockMatin
-            + $entrees
-            + $retourCuve
-            - $sorties
-            - $perteCuve;
+        $stockTheorique = $stockMatin + $entrees + $retourCuve - $sorties - $perteCuve;
 
-        $stockPhysique = end($jaugeages)['stock'] ?? 0;
+        $stockPhysique = ! empty($jaugeages)
+            ? (float) $jaugeages[count($jaugeages) - 1]['stock']
+            : 0;
 
-        /**
-         * =========================
-         * 🔹 STRUCTURE PAR CUVE
-         * =========================
-         */
         $data[$cuve->libelle] = [
-            'date' => $dateDebut . ' → ' . $dateFin,
+            'date' => $start->toDateString() . ' → ' . $end->toDateString(),
 
             'station' => [
                 'id'      => $cuve->station->id,
@@ -497,6 +487,9 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
         'data'   => $data,
     ], 200);
 }
+   
+
+
 }
 
 
