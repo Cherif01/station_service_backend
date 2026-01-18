@@ -47,7 +47,7 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
 
     Route::apiResource('appro', ApprovisionnementCuveController::class);
     Route::apiResource('validation', ValidationVenteController::class);
-    Route::apiResource('vente-par-litre', VenteLitreController::class);
+    Route::apiResource('mesure-cuves', VenteLitreController::class);
     Route::apiResource('perte-cuves', PerteCuveController::class);
     Route::apiResource('produits', ProduitController1::class);
     Route::apiResource('services', ServiceController::class);
