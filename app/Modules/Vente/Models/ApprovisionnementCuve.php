@@ -14,6 +14,7 @@ class ApprovisionnementCuve extends Model
     protected $fillable = [
         'id_cuve',
         'qte_appro',
+        'type_appro',
         'pu_unitaire',
         'commentaire',
         'created_by',

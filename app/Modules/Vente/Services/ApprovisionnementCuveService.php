@@ -102,58 +102,57 @@ class ApprovisionnementCuveService
             ], 500);
         }
     }
-   public function retourcuve(array $data)
-{
-    try {
+    public function retourcuve(array $data)
+    {
+        try {
 
-        DB::transaction(function () use ($data, &$retour) {
+            DB::transaction(function () use ($data, &$retour) {
 
-            /**
-             * =================================================
-             * 🔐 SÉCURITÉ : CUVE VISIBLE + VERROU
-             * =================================================
-             */
-            $cuve = Cuve::visible()
-                ->lockForUpdate()
-                ->findOrFail($data['id_cuve']);
+                /**
+                 * =================================================
+                 * 🔐 SÉCURITÉ : CUVE VISIBLE + VERROU
+                 * =================================================
+                 */
+                $cuve = Cuve::visible()
+                    ->lockForUpdate()
+                    ->findOrFail($data['id_cuve']);
 
-            /**
-             * =================================================
-             * 1️⃣ CRÉATION HISTORIQUE (TYPE = retour_cuve)
-             * =================================================
-             */
-            $retour = ApprovisionnementCuve::create([
-                'id_cuve'     => $data['id_cuve'],
-                'qte_appro'   => $data['qte_appro'],
-                'pu_unitaire' => $data['pu_unitaire'] ?? 0,
-                'type_appro'  => 'retour_cuve',
-               
-            ]);
+                /**
+                 * =================================================
+                 * 1️⃣ CRÉATION HISTORIQUE (TYPE = retour_cuve)
+                 * =================================================
+                 */
+                $retour = ApprovisionnementCuve::create([
+                    'id_cuve'     => $data['id_cuve'],
+                    'qte_appro'   => $data['qte_appro'],
+                    'pu_unitaire' => $data['pu_unitaire'] ?? 0,
+                    'type_appro'  => 'retour_cuve',
 
-            /**
-             * =================================================
-             * 2️⃣ AJUSTEMENT STOCK (+)
-             * =================================================
-             */
-            $cuve->increment('qt_actuelle', $data['qte_appro']);
-        });
+                ]);
 
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Retour de cuve enregistré avec succès.',
-            'data'    => new ApprovisionnementCuveResource($retour),
-        ], 200);
+                /**
+                 * =================================================
+                 * 2️⃣ AJUSTEMENT STOCK (+)
+                 * =================================================
+                 */
+                $cuve->increment('qt_actuelle', $data['qte_appro']);
+            });
 
-    } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Retour de cuve enregistré avec succès.',
+                'data'    => new ApprovisionnementCuveResource($retour),
+            ], 200);
 
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de l’enregistrement du retour de cuve.',
-            'error'   => $e->getMessage(),
-        ], 500);
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de l’enregistrement du retour de cuve.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
-}
-
 
     /**
      * =========================
