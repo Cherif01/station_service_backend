@@ -643,164 +643,7 @@ class ProduitService
     //         'data'   => $data,
     //     ], 200);
     // }
-    // public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
-    // {
-    //     $data = [];
-
-    //     $start = Carbon::parse($dateDebut)->startOfDay();
-    //     $end   = Carbon::parse($dateFin)->endOfDay();
-
-    //     $cuves = Cuve::visible()
-    //         ->where('status', true)
-    //         ->with('station:id,libelle')
-    //         ->orderBy('libelle')
-    //         ->get();
-
-    //     foreach ($cuves as $cuve) {
-
-    //         /**
-    //          * =========================
-    //          * 🔹 APPROVISIONNEMENTS
-    //          * =========================
-    //          */
-    //         $approvisionnements = ApprovisionnementCuve::visible()
-    //             ->where('id_cuve', $cuve->id)
-    //             ->whereBetween('created_at', [$start, $end])
-    //             ->orderBy('created_at', 'asc')
-    //             ->get()
-    //             ->map(fn($a) => [
-    //                 'date'        => $a->created_at?->toDateString(),
-    //                 'qte_appro'   => (float) $a->qte_appro,
-    //                 'pu_unitaire' => (float) ($a->pu_unitaire ?? 0),
-    //                 'type_appro'  => $a->type_appro,
-    //             ])
-    //             ->toArray();
-
-    //         /**
-    //          * =========================
-    //          * 🔹 PERTES
-    //          * =========================
-    //          */
-    //         $pertes = PerteCuve::visible()
-    //             ->where('id_cuve', $cuve->id)
-    //             ->whereBetween('created_at', [$start, $end])
-    //             ->orderBy('created_at', 'asc')
-    //             ->get()
-    //             ->map(fn($p) => [
-    //                 'date'      => $p->created_at?->toDateString(),
-    //                 'qte_perte' => (float) $p->quantite_perdue,
-    //                 'motif'     => $p->commentaire,
-    //             ])
-    //             ->toArray();
-
-    //         /**
-    //          * =========================
-    //          * 🔹 JAUGEAGES + ÉCART LIGNE / LIGNE
-    //          * =========================
-    //          */
-    //         $jaugeagesBruts = VenteLitre::visible()
-    //             ->where('id_cuve', $cuve->id)
-    //             ->whereBetween('created_at', [$start, $end])
-    //             ->orderBy('created_at', 'asc')
-    //             ->get();
-
-    //         $jaugeages     = [];
-    //         $ecartGlobal   = 0.0;
-    //         $previousStock = null;
-
-    //         foreach ($jaugeagesBruts as $j) {
-
-    //             $stock      = (float) $j->qte_vendu;
-    //             $ecartLigne = 0.0;
-
-    //             if ($previousStock !== null) {
-    //                 // 🔹 LOGIQUE MÉTIER : ancien - suivant
-    //                 $ecartLigne   = $previousStock - $stock;
-    //                 $ecartGlobal += $ecartLigne;
-    //             }
-
-    //             $jaugeages[] = [
-    //                 'date'  => $j->created_at?->toDateString(),
-    //                 'stock' => $stock,
-    //                 'ecart' => (float) number_format($ecartLigne, 2, '.', ''),
-    //             ];
-
-    //             $previousStock = $stock;
-    //         }
-
-    //         // ✅ FORMAT FINAL ÉCART GLOBAL
-    //         $ecartGlobal = number_format($ecartGlobal, 2, '.', '');
-
-    //         /**
-    //          * =========================
-    //          * 🔹 SYNTHÈSE
-    //          * =========================
-    //          */
-    //         $stockMatin = $jaugeages[0]['stock'] ?? 0;
-
-    //         $entrees  = collect($approvisionnements)
-    //             ->where('type_appro', 'approvisionnement')
-    //             ->sum('qte_appro');
-
-    //         $retourCuve = collect($approvisionnements)
-    //             ->where('type_appro', 'retour_cuve')
-    //             ->sum('qte_appro');
-
-    //         $perteCuve = collect($pertes)->sum('qte_perte');
-
-    //         $sorties = LigneVente::visible()
-    //             ->where('id_cuve', $cuve->id)
-    //             ->whereBetween('created_at', [$start, $end])
-    //             ->sum('qte_vendu');
-
-    //         $stockTheorique = $stockMatin + $entrees + $retourCuve - $sorties - $perteCuve;
-
-    //         $stockPhysique = ! empty($jaugeages)
-    //             ? (float) $jaugeages[count($jaugeages) - 1]['stock']
-    //             : 0;
-
-    //         /**
-    //          * =========================
-    //          * 🔹 STRUCTURE FINALE
-    //          * =========================
-    //          */
-    //         $data[$cuve->libelle] = [
-    //             'date'                   => $start->toDateString() . ' → ' . $end->toDateString(),
-
-    //             'station'                => [
-    //                 'id'      => $cuve->station->id,
-    //                 'libelle' => $cuve->station->libelle,
-    //             ],
-
-    //             'cuve'                   => [
-    //                 'id'      => $cuve->id,
-    //                 'libelle' => $cuve->libelle,
-    //             ],
-
-    //             'approvisionnement_cuve' => $approvisionnements,
-    //             'perte_cuve'             => $pertes,
-    //             'jaugeage'               => $jaugeages,
-
-    //             'valeur_en_litre'        => (float) $stockMatin,
-    //             'entrees'                => (float) $entrees,
-    //             'retour_cuve'            => (float) $retourCuve,
-    //             'sorties'                => (float) $sorties,
-    //             'stock_theorique'        => (float) $stockTheorique,
-    //             'stock_physique'         => (float) $stockPhysique,
-
-    //             // ✅ ÉCART FINAL FORMATÉ
-    //             'ecart'                  => (float) $ecartGlobal,
-
-    //             'pompes'                 => [],
-    //         ];
-    //     }
-
-    //     return response()->json([
-    //         'status' => 200,
-    //         'data'   => $data,
-    //     ], 200);
-    // }
-public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
+   public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
 {
     $data = [];
 
@@ -817,10 +660,10 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
 
         /**
          * =========================
-         * 🔹 APPROVISIONNEMENTS (TOUS)
+         * 🔹 APPROVISIONNEMENTS (SÉPARÉS)
          * =========================
          */
-        $approvisionnements = ApprovisionnementCuve::visible()
+        $approvisionnementsBruts = ApprovisionnementCuve::visible()
             ->where('id_cuve', $cuve->id)
             ->whereBetween('created_at', [$start, $end])
             ->orderBy('created_at', 'asc')
@@ -830,15 +673,14 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
                 'qte_appro'   => (float) $a->qte_appro,
                 'pu_unitaire' => (float) ($a->pu_unitaire ?? 0),
                 'type_appro'  => $a->type_appro,
-            ])
+            ]);
+
+        $approvisionnementCuve = $approvisionnementsBruts
+            ->where('type_appro', 'approvisionnement')
+            ->values()
             ->toArray();
 
-        /**
-         * =========================
-         * 🔹 RETOUR CUVE (SOUS-ENSEMBLE)
-         * =========================
-         */
-        $retoursCuveLignes = collect($approvisionnements)
+        $retourCuveLignes = $approvisionnementsBruts
             ->where('type_appro', 'retour_cuve')
             ->values()
             ->toArray();
@@ -862,7 +704,7 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
 
         /**
          * =========================
-         * 🔹 JAUGEAGES + ÉCART LIGNE / LIGNE
+         * 🔹 JAUGEAGES + ÉCART
          * =========================
          */
         $jaugeagesBruts = VenteLitre::visible()
@@ -881,7 +723,6 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
             $ecartLigne = 0.0;
 
             if ($previousStock !== null) {
-                // 🔹 LOGIQUE MÉTIER : ancien - suivant
                 $ecartLigne   = $previousStock - $stock;
                 $ecartGlobal += $ecartLigne;
             }
@@ -895,8 +736,7 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
             $previousStock = $stock;
         }
 
-        // ✅ FORMAT FINAL ÉCART GLOBAL
-        $ecartGlobal = number_format($ecartGlobal, 2, '.', '');
+        $ecartGlobal = (float) number_format($ecartGlobal, 2, '.', '');
 
         /**
          * =========================
@@ -905,15 +745,9 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
          */
         $stockMatin = $jaugeages[0]['stock'] ?? 0;
 
-        $entrees = collect($approvisionnements)
-            ->where('type_appro', 'approvisionnement')
-            ->sum('qte_appro');
-
-        $retourCuve = collect($approvisionnements)
-            ->where('type_appro', 'retour_cuve')
-            ->sum('qte_appro');
-
-        $perteCuve = collect($pertes)->sum('qte_perte');
+        $entrees = collect($approvisionnementCuve)->sum('qte_appro');
+        $retourCuve = collect($retourCuveLignes)->sum('qte_appro');
+        $perteCuve  = collect($pertes)->sum('qte_perte');
 
         $sorties = LigneVente::visible()
             ->where('id_cuve', $cuve->id)
@@ -923,7 +757,7 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
         $stockTheorique = $stockMatin + $entrees + $retourCuve - $sorties - $perteCuve;
 
         $stockPhysique = ! empty($jaugeages)
-            ? (float) $jaugeages[count($jaugeages) - 1]['stock']
+            ? (float) end($jaugeages)['stock']
             : 0;
 
         /**
@@ -944,22 +778,20 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
                 'libelle' => $cuve->libelle,
             ],
 
-            // 🔹 LIGNES
-            'approvisionnement_cuve' => $approvisionnements,
-            'retour_cuve'            => $retoursCuveLignes,
+            // 🔹 LIGNES SÉPARÉES
+            'approvisionnement_cuve' => $approvisionnementCuve,
+            'retour_cuve'            => $retourCuveLignes,
             'perte_cuve'             => $pertes,
             'jaugeage'               => $jaugeages,
 
             // 🔹 SYNTHÈSE
-            'valeur_en_litre'  => (float) $stockMatin,
-            'entrees'          => (float) $entrees,
-            'retour_cuve_qte'  => (float) $retourCuve,
-            'sorties'          => (float) $sorties,
-            'stock_theorique'  => (float) $stockTheorique,
-            'stock_physique'   => (float) $stockPhysique,
-
-            // ✅ ÉCART FINAL FORMATÉ
-            'ecart' => (float) $ecartGlobal,
+            'valeur_en_litre' => (float) $stockMatin,
+            'entrees'         => (float) $entrees,
+            'retour_cuve_qte' => (float) $retourCuve,
+            'sorties'         => (float) $sorties,
+            'stock_theorique' => (float) $stockTheorique,
+            'stock_physique'  => (float) $stockPhysique,
+            'ecart'           => $ecartGlobal,
 
             'pompes' => [],
         ];
@@ -970,6 +802,7 @@ public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin
         'data'   => $data,
     ], 200);
 }
+
 
 
 }
