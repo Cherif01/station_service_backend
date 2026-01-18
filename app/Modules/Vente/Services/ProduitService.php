@@ -431,7 +431,7 @@ class ProduitService
 
                 'pompes' => [],
 
-                'stock_matin'     => (float) $stockMatin,
+                'valeur_en_litre'     => (float) $stockMatin,
                 'entrees'         => (float) $entrees,
                 'retour_cuve'     => (float) $retourCuve,
                 'sorties'         => (float) $sorties,
