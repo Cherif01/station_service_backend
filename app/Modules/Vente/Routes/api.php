@@ -21,6 +21,12 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
         'statistiques/cuves/journalier',
         [ProduitController::class, 'calculerStockJournalierToutesCuves']
     );
+
+      Route::get(
+        '/statistiques/cuves/periode',
+        [ProduitController::class, 'calculerStockJournalierToutesCuves']
+    );
+    
     Route::post(
         'ligne-ventes/index-fin/{id}',
         [LigneVenteController::class, 'update']

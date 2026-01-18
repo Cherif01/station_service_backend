@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Modules\Vente\Requests\StoreProduitRequest;
 use App\Modules\Vente\Requests\UpdateProduitRequest;
 use App\Modules\Vente\Services\ProduitService;
+use Illuminate\Http\Request;
 
 class ProduitController extends Controller
 {
@@ -42,5 +43,16 @@ class ProduitController extends Controller
     {
         return $this->service->calculerToutesCuves();
     }
+    //calculerToutesCuvesEntreDates
+   
+
+public function calculerToutesCuvesEntreDates(Request $request)
+{
+    return $this->service->calculerToutesCuvesEntreDates(
+        $request->query('date_debut'),
+        $request->query('date_fin')
+    );
+}
+
     
 }
