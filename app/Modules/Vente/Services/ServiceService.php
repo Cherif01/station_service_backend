@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Service;
@@ -38,15 +37,44 @@ class ServiceService
     public function store(array $data)
     {
         DB::beginTransaction();
+
         try {
 
+            /**
+             * =================================================
+             * 🔹 STATION ACTIVE (OBLIGATOIRE)
+             * =================================================
+             */
+            $stationActiveId = request()->attributes->get('station_active_id');
+
+            if (! $stationActiveId) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 400,
+                    'message' => 'Aucune station active détectée.',
+                ], 400);
+            }
+
+            /**
+             * =================================================
+             * 🔹 FORCER LA STATION
+             * =================================================
+             */
+            $data['id_station'] = $stationActiveId;
+
+            /**
+             * =================================================
+             * 🔹 CRÉATION SERVICE
+             * =================================================
+             */
             $service = Service::create($data);
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Service créé avec succès',
+                'message' => 'Service créé avec succès.',
                 'data'    => new ServiceResource($service),
             ], 200);
 
@@ -56,7 +84,7 @@ class ServiceService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur création service',
+                'message' => 'Erreur création service.',
                 'error'   => $e->getMessage(),
             ], 500);
         }

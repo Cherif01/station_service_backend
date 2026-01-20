@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Requests;
 
 use Illuminate\Contracts\Validation\Validator;
@@ -16,10 +15,10 @@ class StoreServiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_station' => 'required|exists:stations,id',
-            'libelle'    => 'required|string|max:150',
-            'prix'       => 'required|numeric|min:0',
-            'status'     => 'nullable|boolean',
+
+            'libelle' => 'required|string|max:150',
+            'prix'    => 'required|numeric|min:0',
+            'status'  => 'nullable|boolean',
         ];
     }
 
