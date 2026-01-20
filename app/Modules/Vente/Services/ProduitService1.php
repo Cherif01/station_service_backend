@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Produit;
@@ -38,20 +37,53 @@ class ProduitService1
     public function store(array $data)
     {
         DB::beginTransaction();
+
         try {
 
-            // qte_actuelle = qte_initiale si non fourni (intelligent)
+            /**
+             * =================================================
+             * 🔹 STATION ACTIVE (OBLIGATOIRE)
+             * =================================================
+             */
+            $stationActiveId = request()->attributes->get('station_active_id');
+
+            if (! $stationActiveId) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 400,
+                    'message' => 'Aucune station active détectée.',
+                ], 400);
+            }
+
+            /**
+             * =================================================
+             * 🔹 QUANTITÉ ACTUELLE PAR DÉFAUT
+             * =================================================
+             */
             if (! isset($data['qte_actuelle'])) {
                 $data['qte_actuelle'] = $data['qte_initiale'] ?? 0;
             }
 
+            /**
+             * =================================================
+             * 🔹 FORCER LA STATION (SÉCURITÉ)
+             * =================================================
+             */
+            $data['id_station'] = $stationActiveId;
+
+            /**
+             * =================================================
+             * 🔹 CRÉATION PRODUIT
+             * =================================================
+             */
             $produit = Produit::create($data);
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Produit créé avec succès',
+                'message' => 'Produit créé avec succès.',
                 'data'    => new ProduitResource($produit),
             ], 200);
 
@@ -61,7 +93,7 @@ class ProduitService1
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur création produit',
+                'message' => 'Erreur création produit.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
