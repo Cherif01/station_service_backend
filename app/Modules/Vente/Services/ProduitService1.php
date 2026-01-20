@@ -14,7 +14,7 @@ class ProduitService1
 
         return response()->json([
             'status' => 200,
-            'data'   => ProduitResource::collection($produits),
+            'data'   => ProduitResources::collection($produits),
         ], 200);
     }
 
