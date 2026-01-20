@@ -18,6 +18,7 @@ class StoreProduit1Request extends FormRequest
         return [
             'libelle'       => 'required|string|max:150',
           
+            
             'qte_actuelle'  => 'required|numeric|min:0',
             'prix_unitaire' => 'required|numeric|min:0',
             'seuil_alerte'  => 'nullable|numeric|min:0',
