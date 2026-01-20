@@ -193,17 +193,23 @@ class Compte extends Model
         /**
          * =============================
          * 🔹 PAIEMENTS VENTE (UNE SEULE FOIS)
+         * 🔹 station portée par le CLIENT
          * =============================
          */
-        $totalPaiements = Paiement::whereHas('vente', function ($q) {
-            $q->visible(); // station active
-        })
-            ->sum('montant_payer');
+        $stationId = request()->attributes->get('station_active_id');
 
-        $solde += (float) $totalPaiements;
+        if ($stationId) {
+            $totalPaiements = Paiement::whereHas('vente.client', function ($q) use ($stationId) {
+                    $q->where('id_station', $stationId);
+                })
+                ->sum('montant_payer');
+
+            $solde += (float) $totalPaiements;
+        }
 
         return round($solde, 2);
     }
+
 
     /**
      * =================================================
