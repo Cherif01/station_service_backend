@@ -3,6 +3,7 @@ namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Produit;
 use App\Modules\Vente\Resources\ProduitResource;
+use App\Modules\Vente\Resources\ProduitResources;
 use Illuminate\Support\Facades\DB;
 
 class ProduitService1
@@ -30,7 +31,7 @@ class ProduitService1
 
         return response()->json([
             'status' => 200,
-            'data'   => new ProduitResource($produit),
+            'data'   => new ProduitResources($produit),
         ], 200);
     }
 
@@ -84,7 +85,7 @@ class ProduitService1
             return response()->json([
                 'status'  => 200,
                 'message' => 'Produit créé avec succès.',
-                'data'    => new ProduitResource($produit),
+                'data'    => new ProduitResources($produit),
             ], 200);
 
         } catch (\Throwable $e) {
@@ -123,7 +124,7 @@ class ProduitService1
             return response()->json([
                 'status'  => 200,
                 'message' => 'Produit mis à jour',
-                'data'    => new ProduitResource($produit),
+                'data'    => new ProduitResources($produit),
             ], 200);
 
         } catch (\Throwable $e) {

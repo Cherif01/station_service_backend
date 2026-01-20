@@ -4,26 +4,47 @@ namespace App\Modules\Vente\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProduitResource extends JsonResource
+class ProduitResources extends JsonResource
 {
     public function toArray($request): array
     {
         return [
-            'id'            => $this->id,
-            'libelle'       => $this->libelle,
-            'qte_initiale'  => $this->qte_initiale,
-            'qte_actuelle'  => $this->qte_actuelle,
-            'prix_unitaire' => $this->prix_unitaire,
-            'seuil_alerte'  => $this->seuil_alerte,
-            'status'        => $this->status,
+            // =============================
+            // 🔹 IDENTITÉ
+            // =============================
+            'id'        => $this->id,
+            'reference' => $this->reference,
+            'libelle'   => $this->libelle,
+            'status'    => (bool) $this->status,
 
+            // =============================
+            // 🔹 STOCK
+            // =============================
+            'qte_initiale' => (float) $this->qte_initiale,
+            'qte_actuelle' => (float) $this->qte_actuelle,
+            'seuil_alerte' => (float) $this->seuil_alerte,
+
+            // =============================
+            // 🔹 PRIX
+            // =============================
+            'prix_unitaire' => (float) $this->prix_unitaire,
+
+            // =============================
+            // 🔹 STATION
+            // =============================
             'id_station' => $this->id_station,
 
-            'created_by' => $this->created_by,
-            'modify_by'  => $this->modify_by,
+            // =============================
+            // 🔹 AUDIT (NOMS LISIBLES)
+            // =============================
+            'created_by' => $this->createdBy?->name,
+            'modify_by'  => $this->modifiedBy?->name,
 
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            // =============================
+            // 🔹 DATES
+            // =============================
+            'created_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }
 }
