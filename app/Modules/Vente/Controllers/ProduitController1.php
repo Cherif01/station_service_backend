@@ -3,7 +3,9 @@
 namespace App\Modules\Vente\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Modules\Vente\Requests\StoreProduit1Request;
 use App\Modules\Vente\Requests\StoreProduitRequest;
+use App\Modules\Vente\Requests\UpdateProduit1Request;
 use App\Modules\Vente\Requests\UpdateProduitRequest;
 use App\Modules\Vente\Services\ProduitService1;
 
@@ -41,7 +43,7 @@ class ProduitController1 extends Controller
      * 🔹 CRÉATION
      * =================================================
      */
-    public function store(StoreProduitRequest $request)
+    public function store(StoreProduit1Request $request)
     {
         return $this->service->store($request->validated());
     }
@@ -51,7 +53,7 @@ class ProduitController1 extends Controller
      * 🔹 MISE À JOUR
      * =================================================
      */
-    public function update(UpdateProduitRequest $request, int $id)
+    public function update(UpdateProduit1Request $request, int $id)
     {
         return $this->service->update($id, $request->validated());
     }
