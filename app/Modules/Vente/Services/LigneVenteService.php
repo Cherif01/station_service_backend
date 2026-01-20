@@ -394,23 +394,23 @@ class LigneVenteService
                 ], 404);
             }
 
-            if ($qteVendu > $cuve->qt_actuelle) {
-                DB::rollBack();
+            // if ($qteVendu > $cuve->qt_actuelle) {
+            //     DB::rollBack();
 
-                return response()->json([
-                    'status'  => 409,
-                    'message' => 'Stock insuffisant dans la cuve pour clôturer la vente.',
-                ], 409);
-            }
+            //     return response()->json([
+            //         'status'  => 409,
+            //         'message' => 'Stock insuffisant dans la cuve pour clôturer la vente.',
+            //     ], 409);
+            // }
 
             /**
              * =================================================
              * 6. DÉDUCTION STOCK CUVE
              * =================================================
              */
-            $cuve->update([
-                'qt_actuelle' => $cuve->qt_actuelle - $qteVendu,
-            ]);
+            // $cuve->update([
+            //     'qt_actuelle' => $cuve->qt_actuelle - $qteVendu,
+            // ]);
 
             /**
              * =================================================
@@ -437,7 +437,7 @@ class LigneVenteService
              * =================================================
              */
             $commentaireAuto =
-                "Vente validée\n"
+                 "Vente validée\n"
                 . "Volume : {$qteVendu} L\n"
                 . "PU : {$puVente} GNF\n"
                 . "Montant : {$montant} GNF\n"
@@ -655,13 +655,13 @@ class LigneVenteService
              * 🔹 3.1 MOUVEMENT STOCK : RETOUR CUVE
              * (aucune modification directe de qt_actuelle)
              */
-            ApprovisionnementCuve::create([
-                'id_cuve'     => $item->id_cuve,
-                'type_appro'  => 'retour_cuve',
-                'qte_appro'   => $item->qte_vendu,
-                'commentaire' => 'Annulation vente ID ' . $item->id,
+            // ApprovisionnementCuve::create([
+            //     'id_cuve'     => $item->id_cuve,
+            //     'type_appro'  => 'retour_cuve',
+            //     'qte_appro'   => $item->qte_vendu,
+            //     'commentaire' => 'Annulation vente ID ' . $item->id,
 
-            ]);
+            // ]);
 
             /**
              * 🔹 3.2 RÉCUPÉRATION VALIDATION (TRACE)

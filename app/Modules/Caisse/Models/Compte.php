@@ -3,6 +3,7 @@ namespace App\Modules\Caisse\Models;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Settings\Models\Station;
+use App\Modules\Vente\Models\Paiement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -142,10 +143,16 @@ class Compte extends Model
      * MÉTIER : CALCUL DU SOLDE ACTUEL
      * =================================================
      */
+
     public function getSoldeActuelAttribute(): float
     {
         $solde = (float) $this->solde_initial;
 
+        /**
+         * =============================
+         * 🔹 OPÉRATIONS COMPTABLES
+         * =============================
+         */
         $operations = OperationCompte::where('status', 'effectif')
             ->where(function ($q) {
                 $q->where('id_compte', $this->id)
@@ -160,36 +167,40 @@ class Compte extends Model
             $nature  = (int) $op->typeOperation->nature;
             $montant = (float) $op->montant;
 
-            // =============================
             // 🔹 ENTRÉE
-            // =============================
             if ($nature === 1 && (int) $op->id_compte === (int) $this->id) {
                 $solde += $montant;
             }
 
-            // =============================
             // 🔹 SORTIE
-            // =============================
             if ($nature === 0 && (int) $op->id_compte === (int) $this->id) {
                 $solde -= $montant;
             }
 
-            // =============================
             // 🔹 TRANSFERT
-            // =============================
             if ($nature === 2) {
 
-                // source
                 if ((int) $op->id_source === (int) $this->id) {
                     $solde -= $montant;
                 }
 
-                // destination
                 if ((int) $op->id_destination === (int) $this->id) {
                     $solde += $montant;
                 }
             }
         }
+
+        /**
+         * =============================
+         * 🔹 PAIEMENTS VENTE (UNE SEULE FOIS)
+         * =============================
+         */
+        $totalPaiements = Paiement::whereHas('vente', function ($q) {
+            $q->visible(); // station active
+        })
+            ->sum('montant_payer');
+
+        $solde += (float) $totalPaiements;
 
         return round($solde, 2);
     }

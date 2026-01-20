@@ -16,27 +16,51 @@ class StoreVenteProduitServiceRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // client obligatoire (id_init_vente sera généré côté service)
+            /**
+             * ============================
+             * CLIENT
+             * ============================
+             */
             'id_client' => 'required|exists:clients,id',
 
             /**
              * ============================
-             * PRODUITS (TABLEAU D’OBJETS)
+             * PRODUITS
              * ============================
              */
             'ids_produits' => 'nullable|array',
-
-            'ids_produits.*.id' => 'required|exists:produits,id',
-            'ids_produits.*.qte_vendu'  => 'required|numeric|min:0.01',
+            'ids_produits.*.id' => 'required_with:ids_produits|exists:produits,id',
+            'ids_produits.*.qte_vendu' => 'required_with:ids_produits|numeric|min:0.01',
 
             /**
              * ============================
-             * SERVICES (TABLEAU D’IDS)
+             * SERVICES
              * ============================
              */
-            'ids_services'   => 'nullable|array',
-            'ids_services.*' => 'required|exists:services,id',
+            'ids_services' => 'nullable|array',
+            'ids_services.*' => 'required_with:ids_services|exists:services,id',
         ];
+    }
+
+    /**
+     * ============================
+     * VALIDATION MÉTIER AVANCÉE
+     * ============================
+     */
+    protected function withValidator($validator)
+    {
+        $validator->after(function ($validator) {
+
+            $produits = $this->input('ids_produits', []);
+            $services = $this->input('ids_services', []);
+
+            if (empty($produits) && empty($services)) {
+                $validator->errors()->add(
+                    'ids_produits',
+                    'Au moins un produit ou un service est requis pour créer une vente.'
+                );
+            }
+        });
     }
 
     protected function failedValidation(Validator $validator)

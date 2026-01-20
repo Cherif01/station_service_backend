@@ -3,6 +3,8 @@
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\InitVente;
+use App\Modules\Vente\Models\Produit;
+use App\Modules\Vente\Models\Service;
 use App\Modules\Vente\Models\VenteProduitService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,103 +17,120 @@ class VenteProduitServiceService
      * =================================================
      */
     public function store(array $data)
-    {
-        DB::beginTransaction();
+{
+    DB::beginTransaction();
 
-        try {
+    try {
 
-            $user = Auth::user();
+        $user = Auth::user();
 
-            if (! $user) {
-                DB::rollBack();
-                return response()->json([
-                    'status'  => 401,
-                    'message' => 'Utilisateur non authentifié.',
-                ], 401);
-            }
-
-            $idStation = request()->attributes->get('station_active_id');
-
-            if (! $idStation) {
-                DB::rollBack();
-                return response()->json([
-                    'status'  => 400,
-                    'message' => 'Aucune station active détectée.',
-                ], 400);
-            }
-
-            $affectation = $user->activeAffectation();
-
-            if (! $affectation) {
-                DB::rollBack();
-                return response()->json([
-                    'status'  => 403,
-                    'message' => 'Aucune affectation active.',
-                ], 403);
-            }
-
-            /**
-             * INIT VENTE
-             */
-            $initVente = InitVente::create([
-                'id_station'     => $idStation,
-                'id_client'      => $data['id_client'],
-                'id_affectation' => $affectation->id,
-                'status'         => false,
-            ]);
-
-            /**
-             * PRODUITS
-             */
-            if (! empty($data['ids_produits'])) {
-                foreach ($data['ids_produits'] as $item) {
-                    VenteProduitService::create([
-                        'id_init_vente' => $initVente->id,
-                        'id_produit'    => $item['id'],
-                        'qte_vendu'     => $item['qte_vendu'],
-                        'prix_unitaire' => $item['prix_unitaire'] ?? 0,
-                    ]);
-                }
-            }
-
-            /**
-             * SERVICES
-             */
-            if (! empty($data['ids_services'])) {
-                foreach ($data['ids_services'] as $idService) {
-                    VenteProduitService::create([
-                        'id_init_vente' => $initVente->id,
-                        'id_service'    => $idService,
-                        'qte_vendu'     => 1,
-                        'prix_unitaire' => 0,
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Vente créée avec succès.',
-                'data'    => $initVente->load([
-                    'client',
-                    'lignes.produit',
-                    'lignes.service',
-                    'createdBy',
-                ]),
-            ], 200);
-
-        } catch (\Throwable $e) {
-
+        if (! $user) {
             DB::rollBack();
-
             return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur création vente.',
-                'error'   => $e->getMessage(),
-            ], 500);
+                'status'  => 401,
+                'message' => 'Utilisateur non authentifié.',
+            ], 401);
         }
+
+        $idStation = request()->attributes->get('station_active_id');
+
+        if (! $idStation) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => 400,
+                'message' => 'Aucune station active détectée.',
+            ], 400);
+        }
+
+        $affectation = $user->activeAffectation();
+
+        if (! $affectation) {
+            DB::rollBack();
+            return response()->json([
+                'status'  => 403,
+                'message' => 'Aucune affectation active.',
+            ], 403);
+        }
+
+        /**
+         * =================================================
+         * 1️⃣ INIT VENTE
+         * =================================================
+         */
+        $initVente = InitVente::create([
+            'id_station'     => $idStation,
+            'id_client'      => $data['id_client'],
+            'id_affectation' => $affectation->id,
+            'status'         => false,
+        ]);
+
+        /**
+         * =================================================
+         * 2️⃣ PRODUITS (PRIX = BASE)
+         * =================================================
+         */
+        if (! empty($data['ids_produits'])) {
+
+            foreach ($data['ids_produits'] as $item) {
+
+                $produit = Produit::visible()
+                    ->lockForUpdate()
+                    ->findOrFail($item['id']);
+
+                VenteProduitService::create([
+                    'id_init_vente' => $initVente->id,
+                    'id_produit'    => $produit->id,
+                    'qte_vendu'     => $item['qte_vendu'],
+                    'prix_unitaire' => $produit->prix_unitaire, // ✅ SOURCE UNIQUE
+                ]);
+            }
+        }
+
+        /**
+         * =================================================
+         * 3️⃣ SERVICES (PRIX = BASE)
+         * =================================================
+         */
+        if (! empty($data['ids_services'])) {
+
+            foreach ($data['ids_services'] as $idService) {
+
+                $service = Service::visible()
+                    ->findOrFail($idService);
+
+                VenteProduitService::create([
+                    'id_init_vente' => $initVente->id,
+                    'id_service'    => $service->id,
+                    'qte_vendu'     => 1,
+                    'prix_unitaire' => $service->prix, // ✅ SOURCE UNIQUE
+                ]);
+            }
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Vente créée avec succès.',
+            'data'    => $initVente->load([
+                'client',
+                'lignes.produit',
+                'lignes.service',
+                'createdBy',
+            ]),
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur création vente.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * =================================================

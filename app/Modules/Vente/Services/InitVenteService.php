@@ -190,14 +190,14 @@ class InitVenteService
             // 🔹 SERVICE
             if ($ligne->service) {
 
-                $montant       = $ligne->prix_unitaire;
+                $montant       = $ligne->prix;
                 $totalFacture += $montant;
 
                 $elements[] = [
                     'type'          => 'service',
                     'id'            => $ligne->service->id,
                     'libelle'       => $ligne->service->libelle,
-                    'prix_unitaire' => $ligne->prix_unitaire,
+                    'prix_unitaire' => $ligne->prix,
                     'montant'       => $montant,
                 ];
             }
