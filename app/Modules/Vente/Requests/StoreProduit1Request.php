@@ -16,7 +16,6 @@ class StoreProduit1Request extends FormRequest
     public function rules(): array
     {
         return [
-            'id_station'    => 'required|exists:stations,id',
             'libelle'       => 'required|string|max:150',
             'qte_initiale'  => 'required|numeric|min:0',
             'qte_actuelle'  => 'required|numeric|min:0',
