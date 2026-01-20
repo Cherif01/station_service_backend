@@ -129,7 +129,7 @@ public function store(array $data)
                     'id_init_vente' => $initVente->id,
                     'id_service'    => $service->id,
                     'qte_vendu'     => 1,
-                    'prix' => $service->prix,
+                    'prix_unitaire' => $service->prix,
                 ]);
             }
         }
