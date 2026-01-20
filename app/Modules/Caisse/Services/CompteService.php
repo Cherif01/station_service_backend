@@ -26,6 +26,7 @@ class CompteService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des comptes.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
