@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Client;
@@ -42,15 +41,44 @@ class ClientService
     public function store(array $data)
     {
         DB::beginTransaction();
+
         try {
 
+            /**
+             * =================================================
+             * 🔹 STATION ACTIVE (OBLIGATOIRE)
+             * =================================================
+             */
+            $stationActiveId = request()->attributes->get('station_active_id');
+
+            if (! $stationActiveId) {
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 400,
+                    'message' => 'Aucune station active détectée.',
+                ], 400);
+            }
+
+            /**
+             * =================================================
+             * 🔹 FORCER LA STATION
+             * =================================================
+             */
+            $data['id_station'] = $stationActiveId;
+
+            /**
+             * =================================================
+             * 🔹 CRÉATION CLIENT
+             * =================================================
+             */
             $client = Client::create($data);
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Client créé avec succès',
+                'message' => 'Client créé avec succès.',
                 'data'    => new ClientResource(
                     $client->load(['station', 'createdBy'])
                 ),
@@ -62,7 +90,7 @@ class ClientService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur création client',
+                'message' => 'Erreur création client.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
