@@ -36,7 +36,15 @@ class InitVente extends Model
 
     public function scopeVisible(Builder $query): Builder
     {
-        return $query->where('id_station', request()->attributes->get('station_active_id'));
+        $stationActiveId = request()->attributes->get('station_active_id');
+
+        if (! $stationActiveId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('client', function (Builder $q) use ($stationActiveId) {
+            $q->where('id_station', $stationActiveId);
+        });
     }
 
     public function client()
