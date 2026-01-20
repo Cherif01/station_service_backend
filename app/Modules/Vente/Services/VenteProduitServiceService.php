@@ -16,7 +16,7 @@ class VenteProduitServiceService
      * 🔹 CRÉATION D’UNE VENTE COMPLÈTE
      * =================================================
      */
-    public function store(array $data)
+public function store(array $data)
 {
     DB::beginTransaction();
 
@@ -66,29 +66,57 @@ class VenteProduitServiceService
 
         /**
          * =================================================
-         * 2️⃣ PRODUITS (PRIX = BASE)
+         * 2️⃣ PRODUITS (AVEC CONTRÔLE DE STOCK)
          * =================================================
          */
         if (! empty($data['ids_produits'])) {
 
             foreach ($data['ids_produits'] as $item) {
 
+                $qteVendue = (float) $item['qte_vendu'];
+
+                if ($qteVendue <= 0) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status'  => 400,
+                        'message' => 'La quantité vendue doit être supérieure à zéro.',
+                    ], 400);
+                }
+
+                // 🔐 Verrouillage pessimiste
                 $produit = Produit::visible()
                     ->lockForUpdate()
                     ->findOrFail($item['id']);
 
+                // ❌ Stock insuffisant
+                if ($qteVendue > (float) $produit->qte_actuelle) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status'  => 400,
+                        'message' => "Stock insuffisant pour le produit « {$produit->libelle} ».",
+                        'details' => [
+                            'stock_disponible' => (float) $produit->qte_actuelle,
+                            'quantite_demandee' => $qteVendue,
+                        ],
+                    ], 400);
+                }
+
+                // 1️⃣ Création ligne de vente
                 VenteProduitService::create([
                     'id_init_vente' => $initVente->id,
                     'id_produit'    => $produit->id,
-                    'qte_vendu'     => $item['qte_vendu'],
-                    'prix_unitaire' => $produit->prix_unitaire, // ✅ SOURCE UNIQUE
+                    'qte_vendu'     => $qteVendue,
+                    'prix_unitaire' => $produit->prix_unitaire,
                 ]);
+
+                // 2️⃣ Mise à jour stock produit
+                $produit->decrement('qte_actuelle', $qteVendue);
             }
         }
 
         /**
          * =================================================
-         * 3️⃣ SERVICES (PRIX = BASE)
+         * 3️⃣ SERVICES (PAS DE STOCK)
          * =================================================
          */
         if (! empty($data['ids_services'])) {
@@ -102,7 +130,7 @@ class VenteProduitServiceService
                     'id_init_vente' => $initVente->id,
                     'id_service'    => $service->id,
                     'qte_vendu'     => 1,
-                    'prix_unitaire' => $service->prix, // ✅ SOURCE UNIQUE
+                    'prix' => $service->prix,
                 ]);
             }
         }
