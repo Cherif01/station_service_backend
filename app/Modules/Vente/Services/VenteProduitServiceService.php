@@ -58,7 +58,6 @@ public function store(array $data)
          * =================================================
          */
         $initVente = InitVente::create([
-            'id_station'     => $idStation,
             'id_client'      => $data['id_client'],
             'id_affectation' => $affectation->id,
             'status'         => false,
