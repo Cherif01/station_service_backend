@@ -11,23 +11,32 @@ class InitVenteResource extends JsonResource
     {
         /**
          * =================================================
-         * 🔹 RÉCUPÉRATION DE L’ÉTAT MÉTIER
+         * 🔹 ÉTAT MÉTIER CENTRAL
          * =================================================
          */
         $etatVente = app(InitVenteService::class)->getEtatVente($this->id);
 
         return [
+            // =============================
+            // 🔹 IDENTITÉ
+            // =============================
             'id'        => $this->id,
             'reference' => $this->reference,
             'status'    => $this->status,
 
-            // client
+            // =============================
+            // 🔹 CLIENT
+            // =============================
             'client' => $etatVente['client'] ?? null,
 
-            // produits + services
+            // =============================
+            // 🔹 PRODUITS & SERVICES
+            // =============================
             'elements' => $etatVente['elements'] ?? [],
 
-            // facturation
+            // =============================
+            // 🔹 FACTURATION (SYNTHÈSE)
+            // =============================
             'facturation' => $etatVente['facturation'] ?? [
                 'total_facture' => 0,
                 'total_paye'    => 0,
@@ -35,12 +44,34 @@ class InitVenteResource extends JsonResource
                 'etat'          => 'non_paye',
             ],
 
-            // audit (flat)
-            'created_by' => $this->whenLoaded('createdBy', fn () => $this->createdBy->name),
-            'modify_by'  => $this->whenLoaded('modifiedBy', fn () => $this->modifiedBy?->name),
+            // =============================
+            // 🔹 PAIEMENTS (DÉTAIL)
+            // =============================
+            'paiements' => $this->whenLoaded('paiements', function () {
+                return $this->paiements->map(fn ($p) => [
+                    'id'            => $p->id,
+                    'montant_payer' => (float) $p->montant_payer,
+                    'mode_paiement' => $p->mode_paiement,
+                    'created_by'    => $p->createdBy?->name,
+                    'created_at'    => $p->created_at?->toDateTimeString(),
+                ]);
+            }),
 
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            // =============================
+            // 🔹 AUDIT
+            // =============================
+            'created_by' => $this->whenLoaded(
+                'createdBy',
+                fn () => $this->createdBy->name
+            ),
+
+            'modify_by' => $this->whenLoaded(
+                'modifiedBy',
+                fn () => $this->modifiedBy?->name
+            ),
+
+            'created_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
     }
 }
