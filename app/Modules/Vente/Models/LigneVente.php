@@ -6,10 +6,9 @@ use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Models\Station;
 // ✅ import manquant
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-
 
 class LigneVente extends Model
 {
@@ -22,6 +21,7 @@ class LigneVente extends Model
         'index_debut',
         'index_fin',
         'qte_vendu',
+        'prix_unitaire',
         'status',
         'created_by',
         'modify_by',
@@ -116,70 +116,69 @@ class LigneVente extends Model
     //     }
     // }
     public function scopeVisible(Builder $query): Builder
-{
-    $user = Auth::user();
+    {
+        $user = Auth::user();
 
-    if (! $user) {
-        return $query->whereRaw('1 = 0');
-    }
-
-    // 🔹 Station active injectée par le middleware
-    $stationActiveId = request()->attributes->get('station_active_id');
-
-    switch ($user->role) {
-
-        /**
-         * 🔥 SUPER ADMIN
-         * → ventes de la station ACTIVE
-         */
-        case 'super_admin':
-
-            if (! $stationActiveId) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            return $query->where('id_station', $stationActiveId);
-
-        /**
-         * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-         * → ventes de la station ACTIVE
-         */
-        case 'admin':
-        case 'superviseur':
-        case 'gerant':
-
-            if (! $stationActiveId) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            return $query->where('id_station', $stationActiveId);
-
-        /**
-         * 🔴 POMPISTE
-         * → toutes ses ventes (via ses affectations)
-         */
-        case 'pompiste':
-
-            $affectationIds = $user->affectations()
-                ->pluck('id')
-                ->filter()
-                ->values()
-                ->all();
-
-            if (empty($affectationIds)) {
-                return $query->whereRaw('1 = 0');
-            }
-
-            return $query->whereIn('id_affectation', $affectationIds);
-
-        /**
-         * ❌ AUTRES CAS
-         */
-        default:
+        if (! $user) {
             return $query->whereRaw('1 = 0');
-    }
-}
+        }
 
+        // 🔹 Station active injectée par le middleware
+        $stationActiveId = request()->attributes->get('station_active_id');
+
+        switch ($user->role) {
+
+            /**
+                 * 🔥 SUPER ADMIN
+                 * → ventes de la station ACTIVE
+                 */
+            case 'super_admin':
+
+                if (! $stationActiveId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id_station', $stationActiveId);
+
+            /**
+                 * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
+                 * → ventes de la station ACTIVE
+                 */
+            case 'admin':
+            case 'superviseur':
+            case 'gerant':
+
+                if (! $stationActiveId) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->where('id_station', $stationActiveId);
+
+            /**
+                 * 🔴 POMPISTE
+                 * → toutes ses ventes (via ses affectations)
+                 */
+            case 'pompiste':
+
+                $affectationIds = $user->affectations()
+                    ->pluck('id')
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                if (empty($affectationIds)) {
+                    return $query->whereRaw('1 = 0');
+                }
+
+                return $query->whereIn('id_affectation', $affectationIds);
+
+            /**
+                 * ❌ AUTRES CAS
+                 */
+            default:
+                return $query->whereRaw('1 = 0');
+        }
+    }
 
     // =========================
     // RELATIONS
@@ -230,27 +229,27 @@ class LigneVente extends Model
     }
 
     /**
- * =========================
- * VALIDATION DE VENTE
- * =========================
- */
-public function validation()
-{
-    return $this->hasOne(
-        ValidationVente::class,
-        'id_vente'
-    );
-}
+     * =========================
+     * VALIDATION DE VENTE
+     * =========================
+     */
+    public function validation()
+    {
+        return $this->hasOne(
+            ValidationVente::class,
+            'id_vente'
+        );
+    }
 /**
  * =========================
  * COMMENTAIRE DE VALIDATION
  * =========================
  */
-protected function validationCommentaire(): Attribute
-{
-    return Attribute::get(
-        fn () => $this->validation?->commentaire
-    );
-}
+    protected function validationCommentaire(): Attribute
+    {
+        return Attribute::get(
+            fn() => $this->validation?->commentaire
+        );
+    }
 
 }
