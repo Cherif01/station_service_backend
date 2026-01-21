@@ -3,11 +3,15 @@ namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Setting;
 use App\Modules\Settings\Resources\SettingResource;
+use App\Traits\ImageUpload;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class SettingService
 {
+
+    use ImageUpload;
     /**
      * =================================================
      * LISTE DES SETTINGS (GLOBAL + STATION ACTIVE)
@@ -67,6 +71,56 @@ class SettingService
      * CRÉATION
      * =================================================
      */
+    // public function store(array $data)
+    // {
+    //     DB::beginTransaction();
+
+    //     try {
+
+    //         /**
+    //          * 🔹 STATION ACTIVE (OPTIONNEL)
+    //          * null = global
+    //          */
+    //         $data['id_station'] = request()->attributes->get('station_active_id');
+
+    //         /**
+    //          * 🔹 UNICITÉ (id_station + cle)
+    //          */
+    //         $exists = Setting::where('cle', $data['cle'])
+    //             ->where('id_station', $data['id_station'])
+    //             ->exists();
+
+    //         if ($exists) {
+    //             DB::rollBack();
+
+    //             return response()->json([
+    //                 'status'  => 409,
+    //                 'message' => 'Ce paramètre existe déjà pour cette station.',
+    //             ], 409);
+    //         }
+
+    //         $setting = Setting::create($data);
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status'  => 200,
+    //             'message' => 'Paramètre créé avec succès.',
+    //             'data'    => new SettingResource($setting),
+    //         ], 200);
+
+    //     } catch (Throwable $e) {
+
+    //         DB::rollBack();
+
+    //         return response()->json([
+    //             'status'  => 500,
+    //             'message' => 'Erreur lors de la création du paramètre.',
+    //             'error'   => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
     public function store(array $data)
     {
         DB::beginTransaction();
@@ -74,44 +128,64 @@ class SettingService
         try {
 
             /**
-             * 🔹 STATION ACTIVE (OPTIONNEL)
+             * 🔹 STATION ACTIVE
              * null = global
              */
-            $data['id_station'] = request()->attributes->get('station_active_id');
+            $idStation = request()->attributes->get('station_active_id');
 
-            /**
-             * 🔹 UNICITÉ (id_station + cle)
-             */
-            $exists = Setting::where('cle', $data['cle'])
-                ->where('id_station', $data['id_station'])
-                ->exists();
+            foreach ($data['settings'] as $cle => $valeur) {
 
-            if ($exists) {
-                DB::rollBack();
+                /**
+                 * 🔹 UNICITÉ (clé + station)
+                 */
+                $exists = Setting::where('cle', $cle)
+                    ->where('id_station', $idStation)
+                    ->exists();
 
-                return response()->json([
-                    'status'  => 409,
-                    'message' => 'Ce paramètre existe déjà pour cette station.',
-                ], 409);
+                if ($exists) {
+                    DB::rollBack();
+
+                    return response()->json([
+                        'status'  => 409,
+                        'message' => "Le paramètre '{$cle}' existe déjà pour cette station.",
+                    ], 409);
+                }
+
+                /**
+                 * =====================================
+                 * 🔹 TRAITEMENT IMAGE (OBLIGATOIREMENT imageUpload)
+                 * =====================================
+                 */
+                if ($valeur instanceof UploadedFile) {
+
+                    // 👉 UTILISATION STRICTE DE imageUpload
+                    $valeur = $this->imageUpload(
+                        $valeur,
+                        'settings/' . ($idStation ?? 'global')
+                    );
+                }
+
+                Setting::create([
+                    'id_station' => $idStation,
+                    'cle'        => $cle,
+                    'valeur'     => $valeur,
+                ]);
             }
-
-            $setting = Setting::create($data);
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Paramètre créé avec succès.',
-                'data'    => new SettingResource($setting),
+                'message' => 'Paramètres enregistrés avec succès.',
             ], 200);
 
-        } catch (Throwable $e) {
+        } catch (\Throwable $e) {
 
             DB::rollBack();
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la création du paramètre.',
+                'message' => 'Erreur lors de l’enregistrement des paramètres.',
                 'error'   => $e->getMessage(),
             ], 500);
         }

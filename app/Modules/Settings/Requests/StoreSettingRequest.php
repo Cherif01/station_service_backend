@@ -18,34 +18,20 @@ class StoreSettingRequest extends FormRequest
         return [
             /**
              * =========================
-             * 🔹 CLÉ
+             * 🔹 SETTINGS (clé => valeur)
              * =========================
              */
-            'cle' => 'required|string|max:100',
+            'settings' => 'required|array',
 
-            /**
-             * =========================
-             * 🔹 VALEUR
-             * =========================
-             */
-            'valeur' => 'required|string',
-
-            /**
-             * =========================
-             * 🔹 DESCRIPTION
-             * =========================
-             */
-            'description' => 'nullable|string',
+            'settings.*' => 'nullable|string',
         ];
     }
 
     public function messages(): array
     {
         return [
-            'cle.required' => 'La clé du paramètre est obligatoire.',
-            'cle.string'   => 'La clé du paramètre doit être une chaîne de caractères.',
-            'cle.max'      => 'La clé du paramètre ne doit pas dépasser 100 caractères.',
-            'valeur.string' => 'La valeur du paramètre doit être une chaîne de caractères.',
+            'settings.required' => 'Les paramètres sont obligatoires.',
+            'settings.array'    => 'Les paramètres doivent être un tableau clé/valeur.',
         ];
     }
 
@@ -55,7 +41,7 @@ class StoreSettingRequest extends FormRequest
             $validator,
             response()->json([
                 'status'  => 'error',
-                'message' => 'Erreur de validation lors de la création du paramètre.',
+                'message' => 'Erreur de validation des paramètres.',
                 'errors'  => $validator->errors(),
             ], 422)
         );
