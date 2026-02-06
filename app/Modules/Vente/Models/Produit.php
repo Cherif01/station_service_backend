@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
@@ -97,6 +96,8 @@ class Produit extends Model
      * SCOPES
      * =================================================
      */
+
+
     public function scopeVisible(Builder $query): Builder
     {
         return $query->where(
@@ -110,6 +111,7 @@ class Produit extends Model
      * RELATIONS
      * =================================================
      */
+    
     public function station()
     {
         return $this->belongsTo(Station::class, 'id_station');

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
@@ -25,13 +24,16 @@ class InitVente extends Model
     protected static function booted(): void
     {
         static::creating(function ($m) {
-            if (Auth::check()) $m->created_by = Auth::id();
+            if (Auth::check()) {
+                $m->created_by = Auth::id();
+            }
+
             if (! $m->reference) {
                 $m->reference = 'VNT-' . strtoupper(Str::random(8));
             }
         });
 
-        static::updating(fn ($m) => Auth::check() && $m->modify_by = Auth::id());
+        static::updating(fn($m) => Auth::check() && $m->modify_by = Auth::id());
     }
 
     public function scopeVisible(Builder $query): Builder

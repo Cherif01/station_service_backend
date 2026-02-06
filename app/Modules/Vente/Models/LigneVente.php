@@ -4,7 +4,7 @@ namespace App\Modules\Vente\Models;
 use App\Modules\Administration\Models\User;
 use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Models\Station;
-// ✅ import manquant
+
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
