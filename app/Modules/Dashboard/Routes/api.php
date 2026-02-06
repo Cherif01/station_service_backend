@@ -8,6 +8,6 @@ Route::middleware(['station.db','auth:sanctum'])
     ->group(function () {
 
         Route::get('/', [DashboardController::class, 'index']);
-         Route::get('/rapport', [DashboardController::class, 'rapport']);
+         Route::post('/rapport', [DashboardController::class, 'rapport']);
 
     });
