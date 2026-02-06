@@ -203,21 +203,22 @@ public function getRapport(array $payload): array
             ];
         }
 
+        // 🔹 NORMALISATION UNIQUE DES DATES
+        $dateDebut = ! empty($payload['date_debut'])
+            ? $payload['date_debut'] . ' 00:00:00'
+            : now()->startOfDay()->toDateTimeString();
+
+        $dateFin = ! empty($payload['date_fin'])
+            ? $payload['date_fin'] . ' 23:59:59'
+            : now()->endOfDay()->toDateTimeString();
+
         switch ($typeRapport) {
 
             case 'ventes':
 
-                if (empty($payload['date_debut']) || empty($payload['date_fin'])) {
-                    return [
-                        'status'  => 422,
-                        'message' => 'date_debut et date_fin sont requis pour le rapport ventes.',
-                        'data'    => [],
-                    ];
-                }
-
                 $result = $this->queryRapportVentes(
-                    $payload['date_debut'],
-                    $payload['date_fin'],
+                    $dateDebut,
+                    $dateFin,
                     $payload['id_pompe'] ?? null,
                     $payload['id_pompiste'] ?? null
                 );
@@ -235,8 +236,8 @@ public function getRapport(array $payload): array
             case 'stock':
 
                 $result = $this->rapportStock(
-                    $payload['date_debut'] ?? null,
-                    $payload['date_fin'] ?? null,
+                    $dateDebut,
+                    $dateFin,
                     $payload['id_cuve'] ?? null
                 );
 
@@ -252,17 +253,9 @@ public function getRapport(array $payload): array
 
             case 'pompes':
 
-                if (empty($payload['date_debut']) || empty($payload['date_fin'])) {
-                    return [
-                        'status'  => 422,
-                        'message' => 'date_debut et date_fin sont requis pour le rapport pompes.',
-                        'data'    => [],
-                    ];
-                }
-
                 $result = $this->rapportPompes(
-                    $payload['date_debut'],
-                    $payload['date_fin'],
+                    $dateDebut,
+                    $dateFin,
                     $payload['id_pompe'] ?? null
                 );
 
