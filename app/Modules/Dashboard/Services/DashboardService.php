@@ -287,7 +287,6 @@ public function getRapport(array $payload): array
     }
 }
 
-
 public function queryRapportVentes(
     string $dateDebut,
     string $dateFin,
@@ -313,25 +312,30 @@ public function queryRapportVentes(
             ->with([
                 'affectation.pompe:id,libelle',
                 'affectation.user:id,name,telephone',
-                'cuve:id,libelle',
+                'cuve:id,libelle,pu_vente',
             ])
             ->get();
 
         $data = $ventes->map(function ($v) {
 
             $qte = (float) $v->qte_vendu;
-            $pu  = (float) $v->prix_unitaire;
-            $mnt = $qte * $pu;
+
+            // 🔒 PRIX EFFECTIF (priorité à la vente, sinon cuve)
+            $pu = $v->prix_unitaire !== null
+                ? (float) $v->prix_unitaire
+                : (float) ($v->cuve->pu_vente ?? 0);
+
+            $montant = $qte * $pu;
 
             return [
-                'pompe'        => $v->affectation->pompe->libelle ?? null,
-                'pompiste'     => $v->affectation->user->name ?? null,
-                'telephone'    => $v->affectation->user->telephone ?? null,
-                'cuve'         => $v->cuve->libelle ?? null,
-                'quantite'     => $qte,
-                'prix_unitaire'=> $pu,
-                'montant'      => $mnt,
-                'date'         => $v->created_at->format('Y-m-d H:i:s'),
+                'pompe'         => $v->affectation->pompe->libelle ?? null,
+                'pompiste'      => $v->affectation->user->name ?? null,
+                'telephone'     => $v->affectation->user->telephone ?? null,
+                'cuve'          => $v->cuve->libelle ?? null,
+                'quantite'      => $qte,
+                'prix_unitaire' => $pu,
+                'montant'       => $montant,
+                'date'          => $v->created_at->format('Y-m-d H:i:s'),
             ];
         })->values()->toArray();
 
@@ -349,6 +353,7 @@ public function queryRapportVentes(
         ];
     }
 }
+
 
 
 
