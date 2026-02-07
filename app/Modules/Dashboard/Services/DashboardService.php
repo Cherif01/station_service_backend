@@ -288,55 +288,6 @@ public function getRapport(array $payload): array
 }
 
 
-// private function queryRapportVentes(
-//     string $dateDebut,
-//     string $dateFin,
-//     ?int $idPompe = null,
-//     ?int $idPompiste = null
-// ): array {
-//     try {
-
-//         $ventes = LigneVente::visible()
-//             ->where('status', true)
-//             ->whereBetween('created_at', [
-//                 $dateDebut . ' 00:00:00',
-//                 $dateFin   . ' 23:59:59',
-//             ])
-//             ->whereHas('affectation', function ($q) use ($idPompe, $idPompiste) {
-//                 $q->visible();
-
-//                 if ($idPompe) {
-//                     $q->where('id_pompe', $idPompe);
-//                 }
-
-//                 if ($idPompiste) {
-//                     $q->where('id_user', $idPompiste);
-//                 }
-//             })
-//             ->with([
-//                 'affectation.pompe' => fn ($q) =>
-//                     $q->visible()->select('id', 'libelle'),
-
-//                 'affectation.user' => fn ($q) =>
-//                     $q->select('id', 'name'),
-//             ])
-//             ->get();
-
-//         return [
-//             'status' => 200,
-//             'data'   => $ventes,
-//         ];
-
-//     } catch (\Throwable $e) {
-
-//         return [
-//             'status'  => 'error',
-//             'message' => 'Erreur lors de la récupération des ventes.',
-//             'error'   => $e->getMessage(),
-//         ];
-//     }
-// }
-
 public function queryRapportVentes(
     string $dateDebut,
     string $dateFin,
@@ -367,13 +318,20 @@ public function queryRapportVentes(
             ->get();
 
         $data = $ventes->map(function ($v) {
+
+            $qte = (float) $v->qte_vendu;
+            $pu  = (float) $v->prix_unitaire;
+            $mnt = $qte * $pu;
+
             return [
-                'pompe'     => $v->affectation->pompe->libelle ?? null,
-                'pompiste'  => $v->affectation->user->name ?? null,
-                'telephone' => $v->affectation->user->telephone ?? null,
-                'cuve'      => $v->cuve->libelle ?? null,
-                'quantite'  => (float) $v->qte_vendu,
-                'date'      => $v->created_at->format('Y-m-d H:i:s'),
+                'pompe'        => $v->affectation->pompe->libelle ?? null,
+                'pompiste'     => $v->affectation->user->name ?? null,
+                'telephone'    => $v->affectation->user->telephone ?? null,
+                'cuve'         => $v->cuve->libelle ?? null,
+                'quantite'     => $qte,
+                'prix_unitaire'=> $pu,
+                'montant'      => $mnt,
+                'date'         => $v->created_at->format('Y-m-d H:i:s'),
             ];
         })->values()->toArray();
 
