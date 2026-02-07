@@ -356,25 +356,16 @@ public function queryRapportVentes(
 
 
 
-
 public function rapportStock(
-    ?string $dateDebut = null,
-    ?string $dateFin = null,
+    string $dateDebut,
+    string $dateFin,
     ?int $idCuve = null
 ): array {
     try {
 
-        $debut = $dateDebut
-            ? $dateDebut . ' 00:00:00'
-            : now()->startOfDay()->toDateTimeString();
-
-        $fin = $dateFin
-            ? $dateFin . ' 23:59:59'
-            : now()->endOfDay()->toDateTimeString();
-
-        $stocks = VenteLitre::visible()
+        $query = VenteLitre::visible()
             ->where('status', true)
-            ->whereBetween('created_at', [$debut, $fin])
+            ->whereBetween('created_at', [$dateDebut, $dateFin])
             ->whereHas('cuve', function ($q) use ($idCuve) {
                 $q->visible();
 
@@ -383,21 +374,33 @@ public function rapportStock(
                 }
             })
             ->with([
-                'cuve' => fn ($q) =>
-                    $q->visible()->select('id', 'libelle', 'capacite'),
+                'cuve:id,libelle',
             ])
-            ->get()
-            ->groupBy(fn ($v) => $v->cuve->libelle)
-            ->map(fn ($group, $cuve) => [
-                'cuve'        => $cuve,
-                'volume_vendu'=> (float) $group->sum('litres'),
-            ])
+            ->orderByDesc('created_at');
+
+        $lignes = $query->get();
+
+        /**
+         * 👉 Pour chaque cuve :
+         * on prend la DERNIÈRE valeur (jaugeage)
+         */
+        $data = $lignes
+            ->groupBy(fn ($v) => $v->cuve->id)
+            ->map(function ($group) {
+                $last = $group->first(); // déjà trié DESC
+
+                return [
+                    'cuve'  => $last->cuve->libelle ?? null,
+                    'stock' => (float) ($last->litres ?? 0), // ou qte_vendu selon ton champ
+                    'date'  => $last->created_at->format('Y-m-d H:i:s'),
+                ];
+            })
             ->values()
             ->toArray();
 
         return [
             'status' => 200,
-            'data'   => $stocks,
+            'data'   => $data,
         ];
 
     } catch (\Throwable $e) {
@@ -409,6 +412,7 @@ public function rapportStock(
         ];
     }
 }
+
 
 
 
