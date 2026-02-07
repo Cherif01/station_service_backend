@@ -391,7 +391,7 @@ public function rapportStock(
 
                 return [
                     'cuve'  => $last->cuve->libelle ?? null,
-                    'stock' => (float) ($last->litres ?? 0), // ou qte_vendu selon ton champ
+                    'stock' => (float) ($last->qte_vendu ?? 0), // ou qte_vendu selon ton champ
                     'date'  => $last->created_at->format('Y-m-d H:i:s'),
                 ];
             })
