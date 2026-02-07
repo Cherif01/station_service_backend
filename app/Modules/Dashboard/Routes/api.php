@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Modules\Dashboard\Controllers\DashboardController;
 
-Route::middleware(['station.db','auth:sanctum'])
+Route::middleware(['station.db','auth:sanctum','active.st'])
     ->prefix('v1/dashboard')
     ->group(function () {
 
