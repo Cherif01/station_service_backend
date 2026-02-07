@@ -415,40 +415,59 @@ public function rapportStock(
 
 
 
-
 public function rapportPompes(
     string $dateDebut,
     string $dateFin,
-    ?int $idPompe = null
+    ?int $idPompiste = null
 ): array {
     try {
 
         $ventes = LigneVente::visible()
             ->where('status', true)
-            ->whereBetween('created_at', [
-                $dateDebut . ' 00:00:00',
-                $dateFin   . ' 23:59:59',
-            ])
-            ->whereHas('affectation', function ($q) use ($idPompe) {
+            ->whereBetween('created_at', [$dateDebut, $dateFin])
+            ->whereHas('affectation', function ($q) use ($idPompiste) {
                 $q->visible();
 
-                if ($idPompe) {
-                    $q->where('id_pompe', $idPompe);
+                if ($idPompiste) {
+                    $q->where('id_user', $idPompiste);
                 }
             })
             ->with([
-                'affectation.pompe' => fn ($q) =>
-                    $q->visible()->select('id', 'libelle'),
+                'affectation.user:id,name,telephone',
+                'cuve:id,pu_vente',
             ])
             ->get();
 
         $data = $ventes
-            ->groupBy(fn ($v) => $v->affectation->pompe->libelle)
-            ->map(fn ($group, $pompe) => [
-                'pompe'   => $pompe,
-                'volume'  => (float) $group->sum('qte_vendu'),
-                'ventes'  => $group->count(),
-            ])
+            ->groupBy(fn ($v) => $v->affectation->user->id)
+            ->map(function ($group) {
+
+                $user = $group->first()->affectation->user;
+
+                $volumeTotal  = 0;
+                $montantTotal = 0;
+
+                foreach ($group as $v) {
+
+                    $qte = (float) $v->qte_vendu;
+
+                    // 🔒 prix effectif (vente prioritaire, sinon cuve)
+                    $pu = $v->prix_unitaire !== null
+                        ? (float) $v->prix_unitaire
+                        : (float) ($v->cuve->pu_vente ?? 0);
+
+                    $volumeTotal  += $qte;
+                    $montantTotal += $qte * $pu;
+                }
+
+                return [
+                    'pompiste' => $user->name ?? null,
+                    'telephone'=> $user->telephone ?? null,
+                    'volume'   => $volumeTotal,
+                    'montant'  => $montantTotal,
+                    'ventes'   => $group->count(),
+                ];
+            })
             ->sortByDesc('volume')
             ->values()
             ->toArray();
@@ -462,7 +481,7 @@ public function rapportPompes(
 
         return [
             'status'  => 'error',
-            'message' => 'Erreur lors de la génération du rapport des pompes.',
+            'message' => 'Erreur lors de la génération du rapport des pompistes.',
             'error'   => $e->getMessage(),
         ];
     }
