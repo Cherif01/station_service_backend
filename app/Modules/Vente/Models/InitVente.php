@@ -69,6 +69,11 @@ class InitVente extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function creances()
+    {
+        return $this->hasMany(Creance::class, 'id_init_vente');
+    }
+
     public function modifiedBy()
     {
         return $this->belongsTo(User::class, 'modify_by');

@@ -14,6 +14,7 @@ class VenteLitre extends Model
     protected $fillable = [
         'id_cuve',
         'qte_vendu',
+        'volume',
         'commentaire',
         'status',
         'created_by',

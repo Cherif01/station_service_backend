@@ -36,6 +36,11 @@ class StoreVenteLitreRequest extends FormRequest
                 'numeric',
                 'min:0.001',
             ],
+             'volume' => [
+                'nullable',
+                'numeric',
+                'min:0.001',
+            ],
 
             'commentaire' => [
                 'nullable',

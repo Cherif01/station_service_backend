@@ -10,6 +10,7 @@ class InitVenteService
     public function index()
     {
         $ventes = InitVente::visible()
+            ->whereHas('lignes') // 🔹 uniquement ventes avec lignes
             ->with([
                 'client',
                 'lignes.produit',
@@ -127,112 +128,111 @@ class InitVenteService
      * 🔹 ÉTAT DÉTAILLÉ D’UNE VENTE (SANS JSON)
      * =================================================
      */
-   public function getEtatVente(int $id): array
-{
-    $vente = InitVente::visible()
-        ->with([
-            'client',
-            'lignes.produit',
-            'lignes.service',
-            'paiements',
-            'createdBy',
-            'modifiedBy',
-        ])
-        ->find($id);
+    public function getEtatVente(int $id): array
+    {
+        $vente = InitVente::visible()
+            ->with([
+                'client',
+                'lignes.produit',
+                'lignes.service',
+                'paiements',
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->find($id);
 
-    if (! $vente) {
+        if (! $vente) {
+            return [
+                'status'      => 404,
+                'message'     => 'Vente introuvable.',
+                'client'      => null,
+                'elements'    => [],
+                'facturation' => [],
+            ];
+        }
+
+        /**
+         * =============================================
+         * 1️⃣ CLIENT
+         * =============================================
+         */
+        $client = [
+            'id'          => $vente->client?->id,
+            'nom_complet' => $vente->client?->nom_complet,
+            'telephone'   => $vente->client?->telephone,
+        ];
+
+        /**
+         * =============================================
+         * 2️⃣ PRODUITS & SERVICES (SOURCE = LIGNE VENTE)
+         * =============================================
+         */
+        $elements     = [];
+        $totalFacture = 0;
+
+        foreach ($vente->lignes as $ligne) {
+
+            $qte     = (float) $ligne->qte_vendu;
+            $prix    = (float) $ligne->prix_unitaire;
+            $montant = $qte * $prix;
+
+            $totalFacture += $montant;
+
+            // 🔹 PRODUIT
+            if ($ligne->produit) {
+                $elements[] = [
+                    'type'          => 'produit',
+                    'id'            => $ligne->produit->id,
+                    'libelle'       => $ligne->produit->libelle,
+                    'qte_vendu'     => $qte,
+                    'prix_unitaire' => $prix,
+                    'montant'       => $montant,
+                ];
+            }
+
+            // 🔹 SERVICE
+            if ($ligne->service) {
+                $elements[] = [
+                    'type'          => 'service',
+                    'id'            => $ligne->service->id,
+                    'libelle'       => $ligne->service->libelle,
+                    'qte_vendu'     => $qte, // toujours 1 chez toi
+                    'prix_unitaire' => $prix,
+                    'montant'       => $montant,
+                ];
+            }
+        }
+
+        /**
+         * =============================================
+         * 3️⃣ FACTURATION
+         * =============================================
+         */
+        $totalPaye  = (float) $vente->paiements->sum('montant_payer');
+        $reste      = max($totalFacture - $totalPaye, 0);
+
+        if ($totalPaye <= 0) {
+            $etat = 'non_paye';
+        } elseif ($totalPaye < $totalFacture) {
+            $etat = 'partiellement_paye';
+        } else {
+            $etat = 'totalement_paye';
+        }
+
         return [
-            'status'      => 404,
-            'message'     => 'Vente introuvable.',
-            'client'      => null,
-            'elements'    => [],
-            'facturation' => [],
+            'status'      => 200,
+
+            'client'      => $client,
+
+            'elements'    => $elements,
+
+            'facturation' => [
+                'total_facture' => round($totalFacture, 2),
+                'total_paye'    => round($totalPaye, 2),
+                'reste_a_payer' => round($reste, 2),
+                'etat'          => $etat,
+            ],
         ];
     }
-
-    /**
-     * =============================================
-     * 1️⃣ CLIENT
-     * =============================================
-     */
-    $client = [
-        'id'          => $vente->client?->id,
-        'nom_complet' => $vente->client?->nom_complet,
-        'telephone'   => $vente->client?->telephone,
-    ];
-
-    /**
-     * =============================================
-     * 2️⃣ PRODUITS & SERVICES (SOURCE = LIGNE VENTE)
-     * =============================================
-     */
-    $elements     = [];
-    $totalFacture = 0;
-
-    foreach ($vente->lignes as $ligne) {
-
-        $qte     = (float) $ligne->qte_vendu;
-        $prix    = (float) $ligne->prix_unitaire;
-        $montant = $qte * $prix;
-
-        $totalFacture += $montant;
-
-        // 🔹 PRODUIT
-        if ($ligne->produit) {
-            $elements[] = [
-                'type'          => 'produit',
-                'id'            => $ligne->produit->id,
-                'libelle'       => $ligne->produit->libelle,
-                'qte_vendu'     => $qte,
-                'prix_unitaire' => $prix,
-                'montant'       => $montant,
-            ];
-        }
-
-        // 🔹 SERVICE
-        if ($ligne->service) {
-            $elements[] = [
-                'type'          => 'service',
-                'id'            => $ligne->service->id,
-                'libelle'       => $ligne->service->libelle,
-                'qte_vendu'     => $qte, // toujours 1 chez toi
-                'prix_unitaire' => $prix,
-                'montant'       => $montant,
-            ];
-        }
-    }
-
-    /**
-     * =============================================
-     * 3️⃣ FACTURATION
-     * =============================================
-     */
-    $totalPaye = (float) $vente->paiements->sum('montant_payer');
-    $reste     = max($totalFacture - $totalPaye, 0);
-
-    if ($totalPaye <= 0) {
-        $etat = 'non_paye';
-    } elseif ($totalPaye < $totalFacture) {
-        $etat = 'partiellement_paye';
-    } else {
-        $etat = 'totalement_paye';
-    }
-
-    return [
-        'status' => 200,
-
-        'client' => $client,
-
-        'elements' => $elements,
-
-        'facturation' => [
-            'total_facture' => round($totalFacture, 2),
-            'total_paye'    => round($totalPaye, 2),
-            'reste_a_payer' => round($reste, 2),
-            'etat'          => $etat,
-        ],
-    ];
-}
-
 
 }

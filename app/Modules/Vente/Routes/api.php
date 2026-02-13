@@ -2,6 +2,7 @@
 
 use App\Modules\Vente\Controllers\ApprovisionnementCuveController;
 use App\Modules\Vente\Controllers\ClientController;
+use App\Modules\Vente\Controllers\CreanceController;
 use App\Modules\Vente\Controllers\InitVenteController;
 use App\Modules\Vente\Controllers\LigneVenteController;
 use App\Modules\Vente\Controllers\PaiementController;
@@ -58,7 +59,8 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
     Route::apiResource('produits', ProduitController1::class);
     Route::apiResource('services', ServiceController::class);
     Route::apiResource('paiements', PaiementController::class);
-     Route::apiResource('clients', ClientController::class);
+    Route::apiResource('clients', ClientController::class);
+     Route::apiResource('creances', CreanceController::class);
     Route::apiResource('init-ventes', InitVenteController::class);
   Route::apiResource(
     'vente-produits-services',
