@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Modules\Vente\Requests\LigneVenteRequest;
 use App\Modules\Vente\Services\LigneVenteService;
 use Illuminate\Http\JsonResponse;
+ use Illuminate\Http\Request;
+
 
 class LigneVenteController extends Controller
 {
@@ -32,10 +34,16 @@ class LigneVenteController extends Controller
     /**
      * Création d'une vente
      */
-    public function store(LigneVenteRequest $request): JsonResponse
-    {
-        return $this->service->store($request->validated());
-    }
+  
+
+public function store(Request $request): JsonResponse
+{
+    $data = $request->validate([
+        'id_station' => ['required', 'exists:stations,id'],
+    ]);
+
+    return $this->service->store($data);
+}
 
     /**
      * Mise à jour d'une vente

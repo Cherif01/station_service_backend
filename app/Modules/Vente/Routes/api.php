@@ -63,6 +63,7 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
     Route::apiResource('clients', ClientController::class);
      Route::apiResource('creances', CreanceController::class);
     Route::apiResource('init-ventes', InitVenteController::class);
+    Route::apiResource('initiation', LigneVenteController::class);
   Route::apiResource(
     'vente-produits-services',
     VenteProduitServiceController::class
