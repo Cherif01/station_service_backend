@@ -28,14 +28,13 @@ class SetActiveStation
          */
         if ($user->role === 'super_admin') {
 
-            // Station stockée côté serveur
             $stationId = Cache::get('station_active_user_' . $user->id);
         }
 
         /**
          * =================================================
          * 🔵 ADMIN / 🟡 GÉRANT / 🟣 SUPERVISEUR
-         * → station via affectation active
+         * → station via id_station ou affectation active
          * =================================================
          */
         elseif (in_array($user->role, ['admin', 'gerant', 'superviseur'])) {
@@ -57,12 +56,10 @@ class SetActiveStation
 
         /**
          * =================================================
-         * 🔒 Injection CONTEXTUELLE (PAS BODY)
+         * 🔒 Injection CONTEXTUELLE
          * =================================================
          */
-        if ($stationId) {
-            $request->attributes->set('station_active_id', $stationId);
-        }
+        $request->attributes->set('station_active_id', $stationId);
 
         return $next($request);
     }

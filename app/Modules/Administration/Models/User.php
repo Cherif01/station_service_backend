@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Affectation;
@@ -90,37 +89,35 @@ class User extends Authenticatable
         switch ($auth->role) {
 
             /**
-             * 🔥 SUPER ADMIN
-             * → voit tout si aucune station active
-             * → sinon agit comme un gérant de la station active
-             */
+                 * 🔥 SUPER ADMIN
+                 * → voit tout si aucune station active
+                 * → sinon agit comme un gérant de la station active
+                 */
             case 'super_admin':
 
                 if ($activeStationId) {
                     return $query->where(function (Builder $q) use ($activeStationId) {
                         $q->where('id_station', $activeStationId)
-                          ->orWhereHas('affectations', function (Builder $qa) use ($activeStationId) {
-                              $qa->where('id_station', $activeStationId)
-                                 ->where('status', true);
-                          });
+                            ->orWhereHas('affectations', function (Builder $qa) use ($activeStationId) {
+                                $qa->where('id_station', $activeStationId)
+                                    ->where('status', true);
+                            });
                     });
                 }
 
                 return $query;
 
             /**
-             * 🔵 ADMIN
-             * 🟡 GÉRANT
-             * 🟣 SUPERVISEUR
-             * → utilisateurs liés à la station active
-             */
+                 * 🔵 ADMIN
+                 * 🟡 GÉRANT
+                 * 🟣 SUPERVISEUR
+                 * → utilisateurs liés à la station active
+                 */
             case 'admin':
             case 'gerant':
             case 'superviseur':
 
-                $stationId = $activeStationId
-                    ?? $auth->id_station
-                    ?? optional($auth->activeAffectation())->id_station;
+                $stationId = $activeStationId ?? $auth->id_station ?? optional($auth->activeAffectation())->id_station;
 
                 if (! $stationId) {
                     return $query->whereRaw('1 = 0');
@@ -128,17 +125,17 @@ class User extends Authenticatable
 
                 return $query->where(function (Builder $q) use ($stationId) {
                     $q->where('id_station', $stationId)
-                      ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
-                          $qa->where('id_station', $stationId)
-                             ->where('status', true);
-                      });
+                        ->orWhereHas('affectations', function (Builder $qa) use ($stationId) {
+                            $qa->where('id_station', $stationId)
+                                ->where('status', true);
+                        });
                 });
 
             /**
-             * 🔴 POMPISTE
-             * → même pompe si possible
-             * → sinon même station
-             */
+                 * 🔴 POMPISTE
+                 * → même pompe si possible
+                 * → sinon même station
+                 */
             case 'pompiste':
 
                 $affectation = $auth->activeAffectation();
@@ -150,22 +147,22 @@ class User extends Authenticatable
                 if (! empty($affectation->id_pompe)) {
                     return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
                         $q->where('id_pompe', $affectation->id_pompe)
-                          ->where('status', true);
+                            ->where('status', true);
                     });
                 }
 
                 if (! empty($affectation->id_station)) {
                     return $query->whereHas('affectations', function (Builder $q) use ($affectation) {
                         $q->where('id_station', $affectation->id_station)
-                          ->where('status', true);
+                            ->where('status', true);
                     });
                 }
 
                 return $query->whereRaw('1 = 0');
 
             /**
-             * ❌ AUTRES CAS
-             */
+                 * ❌ AUTRES CAS
+                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
@@ -192,7 +189,7 @@ class User extends Authenticatable
      */
     public function activeAffectation(): ?Affectation
     {
-        return $this->affectations()
+        return Affectation::where('id_user', $this->id)
             ->where('status', true)
             ->latest('created_at')
             ->first();
