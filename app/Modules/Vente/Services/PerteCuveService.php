@@ -20,14 +20,14 @@ class PerteCuveService
         try {
 
             $pertes = PerteCuve::visible()
-                ->with('cuve.station')
+                ->with(['cuve', 'station'])
                 ->orderByDesc('created_at')
                 ->get();
 
             return response()->json([
                 'status' => 200,
                 'data'   => PerteCuveResource::collection($pertes),
-            ], 200);
+            ]);
 
         } catch (Throwable $e) {
 
@@ -48,7 +48,7 @@ class PerteCuveService
         try {
 
             $perte = PerteCuve::visible()
-                ->with('cuve.station')
+                ->with(['cuve', 'station'])
                 ->find($id);
 
             if (! $perte) {
@@ -61,7 +61,7 @@ class PerteCuveService
             return response()->json([
                 'status' => 200,
                 'data'   => new PerteCuveResource($perte),
-            ], 200);
+            ]);
 
         } catch (Throwable $e) {
 
@@ -83,9 +83,6 @@ class PerteCuveService
 
         try {
 
-            // =================================================
-            // 🔹 Données obligatoires
-            // =================================================
             $idCuve = $data['id_cuve'] ?? null;
             $qte    = $data['quantite_perdue'] ?? null;
 
@@ -105,10 +102,7 @@ class PerteCuveService
                 ], 409);
             }
 
-            // =================================================
-            // 🔒 RÉCUPÉRATION CUVE (SANS scope visible)
-            // =================================================
-            $cuve = Cuve::lockForUpdate()->find($idCuve);
+            $cuve = Cuve::find($idCuve);
 
             if (! $cuve) {
                 return response()->json([
@@ -117,27 +111,8 @@ class PerteCuveService
                 ], 404);
             }
 
-            // =================================================
-            // 🔹 Vérification stock
-            // =================================================
-            if ($qte > $cuve->qt_actuelle) {
-                return response()->json([
-                    'status'  => 409,
-                    'message' => 'Stock insuffisant dans la cuve.',
-                ], 409);
-            }
-
-            // =================================================
-            // 🔻 DÉDUCTION IMMÉDIATE DU STOCK
-            // =================================================
-            $cuve->update([
-                'qt_actuelle' => $cuve->qt_actuelle - $qte,
-            ]);
-
-            // =================================================
-            // 🔹 ENREGISTREMENT DE LA PERTE
-            // =================================================
             $perte = PerteCuve::create([
+                'id_station'      => request()->attributes->get('station_active_id'),
                 'id_cuve'         => $cuve->id,
                 'quantite_perdue' => $qte,
                 'commentaire'     => $data['commentaire'] ?? null,
@@ -146,10 +121,10 @@ class PerteCuveService
             DB::commit();
 
             return response()->json([
-                'status'  => 201,
-                'message' => 'Perte de cuve enregistrée et stock mis à jour.',
+                'status'  => 200,
+                'message' => 'Perte de cuve enregistrée.',
                 'data'    => new PerteCuveResource(
-                    $perte->load('cuve.station')
+                    $perte->load(['cuve', 'station'])
                 ),
             ], 201);
 
@@ -167,7 +142,7 @@ class PerteCuveService
 
     /**
      * =========================
-     * SUPPRESSION (ROLLBACK)
+     * SUPPRESSION
      * =========================
      */
     public function delete(int $id)
@@ -177,7 +152,6 @@ class PerteCuveService
         try {
 
             $perte = PerteCuve::visible()
-                ->with('cuve')
                 ->lockForUpdate()
                 ->find($id);
 
@@ -188,23 +162,14 @@ class PerteCuveService
                 ], 404);
             }
 
-            // =================================================
-            // 🔄 RESTAURATION DU STOCK
-            // =================================================
-            if ($perte->cuve) {
-                $perte->cuve->update([
-                    'qt_actuelle' => $perte->cuve->qt_actuelle + $perte->quantite_perdue,
-                ]);
-            }
-
             $perte->delete();
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Perte supprimée et stock restauré.',
-            ], 200);
+                'message' => 'Perte supprimée avec succès.',
+            ]);
 
         } catch (Throwable $e) {
 

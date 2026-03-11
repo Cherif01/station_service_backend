@@ -3,7 +3,7 @@
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
-use App\Modules\Vente\Models\Cuve;
+use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +14,7 @@ class JaugeageCuve extends Model
     protected $table = 'jaugeage_cuves';
 
     protected $fillable = [
+        'id_station',
         'id_cuve',
         'hauteur',
         'volume_mesure',
@@ -31,7 +32,7 @@ class JaugeageCuve extends Model
 
     /**
      * =================================================
-     * AUDIT
+     * AUDIT + STATION AUTO
      * =================================================
      */
     protected static function booted(): void
@@ -40,6 +41,11 @@ class JaugeageCuve extends Model
 
             if (Auth::check()) {
                 $model->created_by = Auth::id();
+            }
+
+            // station automatique via middleware
+            if (! $model->id_station) {
+                $model->id_station = request()->attributes->get('station_active_id');
             }
 
         });
@@ -66,51 +72,44 @@ class JaugeageCuve extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        /**
-         * 🔹 Station active (middleware)
-         */
         $stationActiveId = request()->attributes->get('station_active_id');
 
-        if ($stationActiveId) {
-
-            return $query->whereHas('cuve', function (Builder $q) use ($stationActiveId) {
-
-                $q->where('id_station', $stationActiveId);
-
-            });
-
-        }
-
         /**
-         * 🔥 Super admin
+         * 🔥 Super Admin sans station active
          */
-        if ($user->role === 'super_admin') {
+        if ($user->role === 'super_admin' && ! $stationActiveId) {
             return $query;
         }
 
         /**
-         * 🔹 Héritage visibilité Cuve
+         * 🔹 Filtrage par station
          */
-        return $query->whereHas('cuve', function (Builder $q) {
+        if ($stationActiveId) {
+            return $query->where('id_station', $stationActiveId);
+        }
 
-            $q->visible();
-
-        });
+        return $query->whereRaw('1 = 0');
     }
 
     /**
      * =================================================
-     * RELATION CUVE
+     * RELATIONS
      * =================================================
      */
+
     public function cuve(): BelongsTo
     {
         return $this->belongsTo(Cuve::class, 'id_cuve');
     }
 
+    public function station(): BelongsTo
+    {
+        return $this->belongsTo(Station::class, 'id_station');
+    }
+
     /**
      * =================================================
-     * RELATIONS AUDIT
+     * AUDIT
      * =================================================
      */
     public function createdBy(): BelongsTo
