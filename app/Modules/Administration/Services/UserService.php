@@ -283,46 +283,50 @@ class UserService
      * ============================
      */
     public function login(array $data)
-    {
-        try {
+{
+    try {
 
-            // ⚠️ IMPORTANT : désactiver les Global Scopes pour le login
-            $user = User::withoutGlobalScopes()
-                ->with(['station', 'createdBy', 'modifiedBy'])
-                ->where('telephone', $data['telephone'])
-                ->first();
+        // ⚠️ IMPORTANT : désactiver les Global Scopes pour le login
+        $user = User::withoutGlobalScopes()
+            ->with([
+                'affectations.station',
+                'createdBy',
+                'modifiedBy'
+            ])
+            ->where('telephone', $data['telephone'])
+            ->first();
 
-            if (! $user || ! Hash::check($data['password'], $user->password)) {
-                return response()->json([
-                    'status'  => 401,
-                    'message' => 'Téléphone ou mot de passe incorrect.',
-                ]);
-            }
-
-            if (! $user->status) {
-                return response()->json([
-                    'status'  => 403,
-                    'message' => 'Votre compte est désactivé. Veuillez contacter l’administration.',
-                ]);
-            }
-
-            $token = $user->createToken('station-auth')->plainTextToken;
-
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
             return response()->json([
-                'status'  => 200,
-                'message' => 'Connexion réussie.',
-                'token'   => $token,
-                'data'    => new UserResource($user),
-            ]);
-
-        } catch (Exception $e) {
-
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la connexion.',
-                'error'   => $e->getMessage(),
+                'status'  => 401,
+                'message' => 'Téléphone ou mot de passe incorrect.',
             ]);
         }
+
+        if (! $user->status) {
+            return response()->json([
+                'status'  => 403,
+                'message' => 'Votre compte est désactivé. Veuillez contacter l’administration.',
+            ]);
+        }
+
+        $token = $user->createToken('station-auth')->plainTextToken;
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Connexion réussie.',
+            'token'   => $token,
+            'data'    => new UserResource($user),
+        ]);
+
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la connexion.',
+            'error'   => $e->getMessage(),
+        ]);
     }
+}
 
 }
