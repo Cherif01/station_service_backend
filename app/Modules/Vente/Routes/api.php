@@ -42,6 +42,10 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
         'liste',
         [ValidationVenteController::class, 'index']
     );
+    Route::get(
+        'releve-pompes',
+        [LigneVenteController::class, 'index1']
+    );
 
     Route::post(
         'validation/ligne-ventes',

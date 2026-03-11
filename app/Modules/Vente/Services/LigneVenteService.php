@@ -62,6 +62,38 @@ class LigneVenteService
         }
     }
 
+    public function getAll1(): JsonResponse
+{
+    try {
+
+        $items = LigneVente::visible()
+            ->with([
+                'station',
+                'cuve',
+                'affectation.pompe.station',
+                'affectation.user',
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->whereDate('created_at', today()) // 🔹 seulement aujourd'hui
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'status' => 200,
+            'data'   => LigneVenteResource::collection($items),
+        ], 200);
+
+    } catch (Throwable $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des lignes de vente.',
+            'error'   => $e->getMessage(),
+        ], 500);
+    }
+}
+
     /**
      * =========================
      * DÉTAIL D’UNE LIGNE

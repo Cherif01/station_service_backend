@@ -22,6 +22,10 @@ class LigneVenteController extends Controller
     {
         return $this->service->getAll();
     }
+     public function index1(): JsonResponse
+    {
+        return $this->service->getAll1();
+    }
 
     /**
      * Détail d'une vente
