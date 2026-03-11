@@ -15,7 +15,7 @@ use App\Modules\Vente\Resources\LigneVenteResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Throwable;
-use App\Modules\Vente\Services\PompeService;
+use App\Modules\Settings\Services\PompeService;
 
 class LigneVenteService
 {
