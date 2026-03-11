@@ -1,0 +1,41 @@
+<?php
+
+namespace App\Modules\Settings\Controllers;
+
+use App\Http\Controllers\Controller;
+use App\Modules\Settings\Requests\StoreFournisseurRequest;
+use App\Modules\Settings\Requests\UpdateFournisseurRequest;
+use App\Modules\Settings\Services\FournisseurService;
+
+class FournisseurController extends Controller
+{
+
+    public function __construct(
+        protected FournisseurService $service
+    ) {}
+
+    public function index()
+    {
+        return $this->service->getAll();
+    }
+
+    public function show(int $id)
+    {
+        return $this->service->getOne($id);
+    }
+
+    public function store(StoreFournisseurRequest $request)
+    {
+        return $this->service->store($request->validated());
+    }
+
+    public function update(UpdateFournisseurRequest $request, int $id)
+    {
+        return $this->service->update($id, $request->validated());
+    }
+
+    public function destroy(int $id)
+    {
+        return $this->service->delete($id);
+    }
+}

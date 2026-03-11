@@ -80,4 +80,11 @@ class OperationCompteController extends Controller
 
         return $this->service->getAllTransfertsByPeriode($data);
     }
+
+    public function resumeMensuel(Request $request)
+    {
+        $annee = $request->query('annee', now()->year);
+
+        return $this->service->resumeMensuel($annee);
+    }
 }

@@ -54,61 +54,7 @@ class Pompe extends Model
         });
     }
 
-    /**
-     * =================================================
-     * SCOPE : VISIBILITÉ DES POMPES
-     * =================================================
-     */
-    // public function scopeVisible(Builder $query): Builder
-    // {
-    //     $user = Auth::user();
-
-    //     if (! $user) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
-
-    //     switch ($user->role) {
-
-    //         /**
-    //          * 🔥 SUPER ADMIN
-    //          */
-    //         case 'super_admin':
-    //             return $query;
-
-    //         /**
-    //          * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-    //          * → pompes de leur station (via affectation active)
-    //          */
-    //         case 'admin':
-    //         case 'superviseur':
-    //         case 'gerant':
-
-    //             $stationId = $user->affectations()
-    //                 ->where('status', true)
-    //                 ->latest('created_at')
-    //                 ->value('id_station');
-
-    //             if (! $stationId) {
-    //                 return $query->whereRaw('1 = 0');
-    //             }
-
-    //             return $query->where('id_station', $stationId);
-
-    //         /**
-    //          * 🔴 POMPISTE
-    //          * → uniquement la pompe à laquelle il est affecté
-    //          */
-    //         case 'pompiste':
-
-    //             return $query->whereHas('affectations', function (Builder $q) use ($user) {
-    //                 $q->where('id_user', $user->id)
-    //                   ->where('status', true);
-    //             });
-
-    //         default:
-    //             return $query->whereRaw('1 = 0');
-    //     }
-    // }
+   
 
     public function scopeVisible(Builder $query): Builder
     {

@@ -2,15 +2,127 @@
 namespace App\Modules\Caisse\Services;
 
 use App\Modules\Caisse\Models\Compte;
+use App\Modules\Caisse\Models\OperationCharge;
 use App\Modules\Caisse\Models\OperationCompte;
 use App\Modules\Caisse\Models\TypeOperation;
 use App\Modules\Caisse\Resources\OperationCompteResource;
 use App\Modules\Caisse\Resources\OperationTransfertResource;
+use App\Modules\Vente\Models\LigneVente;
+use App\Modules\Vente\Models\Paiement;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Mockery\CountValidator\Exception;
 use Throwable;
 
 class OperationCompteService
 {
+
+
+public function resumeMensuel(int $annee)
+{
+    try {
+
+        $data = [];
+
+        $user = auth()->user();
+
+        for ($mois = 1; $mois <= 12; $mois++) {
+
+            $start = Carbon::create($annee, $mois, 1)->startOfMonth();
+            $end   = Carbon::create($annee, $mois, 1)->endOfMonth();
+
+            /**
+             * =========================
+             * VENTES DIRECTES
+             * =========================
+             */
+            $ventesQuery = LigneVente::query()
+                ->where('status', true)
+                ->whereBetween('created_at', [$start, $end]);
+
+            /**
+             * =========================
+             * PAIEMENTS CREANCES
+             * =========================
+             */
+            $creancesQuery = Paiement::query()
+                ->whereBetween('created_at', [$start, $end]);
+
+            /**
+             * =========================
+             * CHARGES
+             * =========================
+             */
+            $chargesQuery = OperationCharge::query()
+                ->whereBetween('created_at', [$start, $end]);
+
+            /**
+             * =========================
+             * FILTRAGE STATION
+             * =========================
+             */
+            if ($user->role !== 'super_admin') {
+
+                $stationId = request()->attributes->get('station_active_id');
+
+                $ventesQuery->where('id_station', $stationId);
+                $creancesQuery->where('id_station', $stationId);
+                $chargesQuery->where('id_station', $stationId);
+            }
+
+            $ventesDirectes = $ventesQuery->sum('montant');
+
+            $paiementsCreances = $creancesQuery->sum('montant_payer');
+
+            $totalCharges = $chargesQuery->sum('montant');
+
+            /**
+             * =========================
+             * TOTAL VENTES
+             * =========================
+             */
+            $totalVentes = $ventesDirectes + $paiementsCreances;
+
+            /**
+             * =========================
+             * BENEFICE
+             * =========================
+             */
+            $benefice = $totalVentes - $totalCharges;
+
+            $data[] = [
+
+                'mois'               => $start->translatedFormat('F'),
+
+                'ventes_directes'    => (float) $ventesDirectes,
+
+                'paiements_creances' => (float) $paiementsCreances,
+
+                'total_ventes'       => (float) $totalVentes,
+
+                'total_depenses'     => (float) $totalCharges,
+
+                'benefice'           => (float) $benefice,
+            ];
+        }
+
+        return response()->json([
+            'status' => 200,
+            'data'   => $data,
+        ]);
+
+    } catch (Exception $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors du calcul du résumé mensuel.',
+            'error'   => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
+
     public function getAll()
     {
         try {

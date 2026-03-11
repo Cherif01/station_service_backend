@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Settings\Controllers\FournisseurController;
 use App\Modules\Settings\Controllers\ParametrageStationController;
 use App\Modules\Settings\Controllers\PaysController;
 use App\Modules\Settings\Controllers\PompeController;
@@ -11,6 +12,7 @@ Route::middleware(['station.db','auth:sanctum','active.st' ])->prefix('v1/settin
     Route::apiResource('pays',PaysController::class);
     Route::apiResource('villes', VilleController::class);
     Route::apiResource('stations', StationController::class);
+    Route::apiResource('fournisseurs', FournisseurController::class);
     Route::apiResource('params', ParametrageStationController::class);
     Route::apiResource('pompes', PompeController::class);
     Route::apiResource('configs', SettingController::class);

@@ -1,0 +1,370 @@
+<?php
+
+namespace App\Modules\Vente\Services;
+
+use App\Modules\Vente\Models\ApprovisionnementCuve;
+use App\Modules\Vente\Models\Cuve;
+use App\Modules\Vente\Models\JaugeageCuve;
+use App\Modules\Vente\Models\LigneVente;
+use App\Modules\Vente\Resources\CuveResource;
+use Carbon\Carbon;
+use Exception;
+
+class CuveService
+{
+
+    /**
+     * =========================
+     * LISTE DES CUVES
+     * =========================
+     */
+    public function getAll()
+    {
+        try {
+
+            $produits = Cuve::visible()
+                ->orderBy('libelle')
+                ->get();
+
+            return response()->json([
+                'status' => 200,
+                'data'   => CuveResource::collection($produits),
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des cuves.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * =========================
+     * DÉTAIL CUVE
+     * =========================
+     */
+    public function getOne(int $id)
+    {
+        try {
+
+            $produit = Cuve::visible()->findOrFail($id);
+
+            return response()->json([
+                'status' => 200,
+                'data'   => new CuveResource($produit),
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Cuve introuvable.',
+                'error'   => $e->getMessage(),
+            ], 404);
+        }
+    }
+
+
+    /**
+     * =========================
+     * CRÉATION CUVE
+     * =========================
+     */
+    public function store(array $data)
+    {
+        try {
+
+            if (
+                array_key_exists('qt_initial', $data)
+                && ! array_key_exists('qt_actuelle', $data)
+            ) {
+                $data['qt_actuelle'] = $data['qt_initial'];
+            }
+
+            $produit = Cuve::create($data);
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Cuve créée avec succès.',
+                'data'    => new CuveResource($produit),
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la création de la cuve.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * =========================
+     * MODIFICATION CUVE
+     * =========================
+     */
+    public function update(int $id, array $data)
+    {
+        try {
+
+            $produit = Cuve::visible()->findOrFail($id);
+            $produit->update($data);
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Cuve modifiée avec succès.',
+                'data'    => new CuveResource($produit),
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la modification de la cuve.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * =========================
+     * SUPPRESSION CUVE
+     * =========================
+     */
+    public function delete(int $id)
+    {
+        try {
+
+            $produit = Cuve::visible()->findOrFail($id);
+            $produit->delete();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Cuve supprimée avec succès.',
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la suppression de la cuve.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * =========================
+     * CALCUL STOCK PAR CUVE
+     * =========================
+     */
+    public function calculerParCuve(int $idCuve): array
+    {
+
+        $cuve = Cuve::visible()
+            ->with('station:id,libelle')
+            ->find($idCuve);
+
+        if (! $cuve) {
+            return [];
+        }
+
+        $lastDate = JaugeageCuve::visible()
+            ->where('id_cuve', $idCuve)
+            ->orderByDesc('created_at')
+            ->value('created_at');
+
+        $date = $lastDate
+            ? Carbon::parse($lastDate)->toDateString()
+            : Carbon::today()->toDateString();
+
+
+        $stockMatin = JaugeageCuve::visible()
+            ->where('id_cuve', $idCuve)
+            ->whereDate('created_at', $date)
+            ->orderBy('created_at')
+            ->value('volume_mesure') ?? 0;
+
+
+        $entrees = ApprovisionnementCuve::visible()
+            ->where('id_cuve', $idCuve)
+            ->whereDate('created_at', $date)
+            ->where('type_appro', 'approvisionnement')
+            ->sum('qte_appro');
+
+
+        $retourCuve = ApprovisionnementCuve::visible()
+            ->where('id_cuve', $idCuve)
+            ->whereDate('created_at', $date)
+            ->where('type_appro', 'retour_cuve')
+            ->sum('qte_appro');
+
+
+        $sorties = LigneVente::visible()
+            ->where('id_cuve', $idCuve)
+            ->whereDate('created_at', $date)
+            ->sum('qte_vendu');
+
+
+        $stockTheorique = $stockMatin + $entrees + $retourCuve - $sorties;
+
+
+        $stockPhysique = JaugeageCuve::visible()
+            ->where('id_cuve', $idCuve)
+            ->whereDate('created_at', $date)
+            ->orderByDesc('created_at')
+            ->value('volume_mesure') ?? 0;
+
+
+        $ecart = $stockPhysique - $stockTheorique;
+
+
+        return [
+
+            'date' => $date,
+
+            'station' => [
+                'id'      => $cuve->station?->id,
+                'libelle' => $cuve->station?->libelle,
+            ],
+
+            'cuve' => [
+                'id'      => $cuve->id,
+                'libelle' => $cuve->libelle,
+            ],
+
+            'stock_matin'     => (float) $stockMatin,
+            'entrees'         => (float) $entrees,
+            'retour_cuve'     => (float) $retourCuve,
+            'sorties'         => (float) $sorties,
+            'stock_theorique' => (float) $stockTheorique,
+            'stock_physique'  => (float) $stockPhysique,
+            'ecart'           => (float) $ecart,
+
+        ];
+    }
+
+
+    /**
+     * =========================
+     * STOCK DE TOUTES LES CUVES
+     * =========================
+     */
+    public function calculerToutesCuves()
+    {
+
+        $data = [];
+
+        $cuves = Cuve::visible()
+            ->where('status', true)
+            ->with('station:id,libelle')
+            ->orderBy('libelle')
+            ->get();
+
+        foreach ($cuves as $cuve) {
+
+            $stockTheorique = LigneVente::visible()
+                ->where('id_cuve', $cuve->id)
+                ->sum('qte_vendu');
+
+            $stockPhysique = JaugeageCuve::visible()
+                ->where('id_cuve', $cuve->id)
+                ->orderByDesc('created_at')
+                ->value('volume_mesure') ?? 0;
+
+            $ecart = $stockPhysique - $stockTheorique;
+
+            $data[] = [
+
+                'station' => [
+                    'id'      => $cuve->station?->id,
+                    'libelle' => $cuve->station?->libelle,
+                ],
+
+                'cuve' => [
+                    'id'      => $cuve->id,
+                    'libelle' => $cuve->libelle,
+                ],
+
+                'stock_theorique' => (float) $stockTheorique,
+                'stock_physique'  => (float) $stockPhysique,
+                'ecart'           => (float) $ecart,
+
+            ];
+        }
+
+        return response()->json([
+            'status' => 200,
+            'data'   => $data,
+        ]);
+    }
+
+
+    /**
+     * =========================
+     * STOCK ENTRE DEUX DATES
+     * =========================
+     */
+    public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
+    {
+
+        $data = [];
+
+        $start = Carbon::parse($dateDebut)->startOfDay();
+        $end   = Carbon::parse($dateFin)->endOfDay();
+
+        $cuves = Cuve::visible()
+            ->where('status', true)
+            ->with('station:id,libelle')
+            ->orderBy('libelle')
+            ->get();
+
+        foreach ($cuves as $cuve) {
+
+            $stockTheorique = LigneVente::visible()
+                ->where('id_cuve', $cuve->id)
+                ->whereBetween('created_at', [$start, $end])
+                ->sum('qte_vendu');
+
+            $stockPhysique = JaugeageCuve::visible()
+                ->where('id_cuve', $cuve->id)
+                ->whereBetween('created_at', [$start, $end])
+                ->orderByDesc('created_at')
+                ->value('volume_mesure') ?? 0;
+
+            $ecart = $stockPhysique - $stockTheorique;
+
+            $data[] = [
+
+                'date' => $start->toDateString() . ' → ' . $end->toDateString(),
+
+                'station' => [
+                    'id'      => $cuve->station?->id,
+                    'libelle' => $cuve->station?->libelle,
+                ],
+
+                'cuve' => [
+                    'id'      => $cuve->id,
+                    'libelle' => $cuve->libelle,
+                ],
+
+                'stock_theorique' => (float) $stockTheorique,
+                'stock_physique'  => (float) $stockPhysique,
+                'ecart'           => (float) $ecart,
+            ];
+        }
+
+        return response()->json([
+            'status' => 200,
+            'data'   => $data,
+        ]);
+    }
+}

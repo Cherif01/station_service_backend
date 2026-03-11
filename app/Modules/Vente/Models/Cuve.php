@@ -64,39 +64,7 @@ class Cuve extends Model
         });
     }
 
-    /**
-     * =================================================
-     * SCOPE LOCAL : VISIBILITÉ DES CUVES
-     * (100 % basé sur la DERNIÈRE AFFECTATION ACTIVE)
-     * =================================================
-     */
-    // public function scopeVisible(Builder $query): Builder
-    // {
-    //     $user = Auth::user();
-
-    //     if (! $user) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
-
-    //     // 🔹 Super admin : tout voir
-    //     if ($user->role === 'super_admin') {
-    //         return $query;
-    //     }
-
-    //     // 🔹 Récupération de la station via DERNIÈRE affectation active
-    //     $stationId = $user->affectations()
-    //         ->where('status', true)
-    //         ->latest('created_at')
-    //         ->value('id_station');
-
-    //     if (! $stationId) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
-
-    //     // 🔹 Admin / Superviseur / Gérant / Pompiste
-    //     // → tous filtrés par leur station d’affectation active
-    //     return $query->where('id_station', $stationId);
-    // }
+   
     public function scopeVisible(Builder $query): Builder
     {
         $user = Auth::user();

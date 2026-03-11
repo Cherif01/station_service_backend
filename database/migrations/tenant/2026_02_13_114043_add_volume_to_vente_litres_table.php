@@ -19,15 +19,22 @@ return new class extends Migration
                   ->after('qte_vendu');
         });
     }
+    
 
     /**
      * Reverse the migrations.
      */
+
+
     public function down(): void
     {
         Schema::table('vente_litres', function (Blueprint $table) {
 
             $table->dropColumn('volume');
+
+
+
+             
         });
     }
 };

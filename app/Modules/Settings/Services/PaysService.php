@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Settings\Services;
 
 use App\Modules\Settings\Models\Pays;
@@ -22,7 +21,7 @@ class PaysService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Pays créé avec succès.',
-                'data'    => new PaysResource($pays),
+
             ]);
 
         } catch (Exception $e) {
@@ -50,7 +49,7 @@ class PaysService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Pays mis à jour avec succès.',
-                'data'    => new PaysResource($pays),
+
             ]);
 
         } catch (Exception $e) {
@@ -99,7 +98,12 @@ class PaysService
     {
         try {
 
-            $pays = Pays::orderBy('libelle')->get();
+            $pays = Pays::with([
+                'createdBy',
+                'modifiedBy',
+            ])
+                ->orderBy('libelle')
+                ->get();
 
             return response()->json([
                 'status' => 200,
@@ -115,4 +119,5 @@ class PaysService
             ]);
         }
     }
+
 }

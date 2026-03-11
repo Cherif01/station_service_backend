@@ -5,7 +5,7 @@ namespace App\Modules\Vente\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class VenteLitreResource extends JsonResource
+class JaugeageCuveResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -13,29 +13,36 @@ class VenteLitreResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'         => $this->id,
-            'id_cuve'    => $this->id_cuve,
+            'id'            => $this->id,
+            'id_cuve'       => $this->id_cuve,
 
-            'qte_vendu'  => (float) $this->qte_vendu,
-            'commentaire'=> $this->commentaire,
-            'status'     => (bool) $this->status,
+            'hauteur'       => (float) $this->hauteur,
+            'volume_mesure' => (float) $this->volume_mesure,
 
-            // =========================
-            // 🔹 CUVE (chargée si nécessaire)
-            // =========================
+            'commentaire'   => $this->commentaire,
+            'status'        => (bool) $this->status,
+
+            /**
+             * =========================
+             * CUVE
+             * =========================
+             */
             'cuve' => $this->whenLoaded('cuve', function () {
+
                 return [
                     'id'           => $this->cuve->id,
                     'libelle'      => $this->cuve->libelle,
                     'reference'    => $this->cuve->reference,
                     'qt_actuelle'  => (float) $this->cuve->qt_actuelle,
-                   
                 ];
+
             }),
 
-            // =========================
-            // 🔹 AUDIT
-            // =========================
+            /**
+             * =========================
+             * AUDIT
+             * =========================
+             */
             'created_by' => $this->created_by,
             'modify_by'  => $this->modify_by,
 

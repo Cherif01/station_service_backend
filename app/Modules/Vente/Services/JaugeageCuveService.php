@@ -1,37 +1,41 @@
 <?php
+
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Cuve;
-use App\Modules\Vente\Models\VenteLitre;
-use App\Modules\Vente\Resources\VenteLitreResource;
+use App\Modules\Vente\Models\JaugeageCuve;
+use App\Modules\Vente\Resources\JaugeageCuveResource;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-class VenteLitreService
+class JaugeageCuveService
 {
     /**
      * =========================
-     * LISTE DES VENTES
+     * LISTE DES JAUGEAGES
      * =========================
      */
     public function getAll()
     {
         try {
-            $items = VenteLitre::visible()
+
+            $items = JaugeageCuve::visible()
                 ->with('cuve.station')
                 ->orderByDesc('created_at')
                 ->get();
 
             return response()->json([
                 'status' => 200,
-                'data'   => VenteLitreResource::collection($items),
+                'data'   => JaugeageCuveResource::collection($items),
             ], 200);
 
         } catch (Throwable $e) {
+
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la récupération des ventes.',
+                'message' => 'Erreur lors de la récupération des jaugeages.',
             ], 500);
+
         }
     }
 
@@ -43,26 +47,29 @@ class VenteLitreService
     public function getOne(int $id)
     {
         try {
-            $item = VenteLitre::visible()
+
+            $item = JaugeageCuve::visible()
                 ->with('cuve.station')
                 ->findOrFail($id);
 
             return response()->json([
                 'status' => 200,
-                'data'   => new VenteLitreResource($item),
+                'data'   => new JaugeageCuveResource($item),
             ], 200);
 
         } catch (Throwable $e) {
+
             return response()->json([
                 'status'  => 404,
-                'message' => 'Vente introuvable.',
+                'message' => 'Jaugeage introuvable.',
             ], 404);
+
         }
     }
 
     /**
      * =========================
-     * CRÉATION (DÉDUCTION IMMÉDIATE)
+     * CRÉATION JAUGEAGE
      * =========================
      */
     public function store(array $data)
@@ -71,67 +78,74 @@ class VenteLitreService
 
         try {
 
-            $niveauCuve = (float) ($data['qte_vendu'] ?? 0);
+            $hauteur = (float) ($data['hauteur'] ?? 0);
 
-            if ($niveauCuve < 0) {
+            if ($hauteur < 0) {
+
                 return response()->json([
                     'status'  => 422,
-                    'message' => 'Lecture de cuve invalide.',
+                    'message' => 'Hauteur de cuve invalide.',
                 ], 422);
+
             }
 
             /**
              * =================================================
-             * 🔒 CUVE VISIBLE (PAS DE DÉDUCTION)
+             * 🔒 CUVE VISIBLE
              * =================================================
              */
             $cuve = Cuve::visible()->find($data['id_cuve']);
 
             if (! $cuve) {
+
                 return response()->json([
                     'status'  => 404,
                     'message' => 'Cuve introuvable ou non autorisée.',
                 ], 404);
+
             }
 
             /**
              * =================================================
-             * 🔹 ENREGISTREMENT LECTURE CUVE
-             * (MATIN OU SOIR)
+             * 🔹 ENREGISTREMENT JAUGEAGE
              * =================================================
              */
-            $lecture = VenteLitre::create([
-                'id_cuve'     => $cuve->id,
-                'qte_vendu'   => $niveauCuve, // 🔥 niveau réel, pas une vente
-                'commentaire' => $data['commentaire'] ?? null,
-                'status'      => true,
+            $jaugeage = JaugeageCuve::create([
+
+                'id_cuve'       => $cuve->id,
+                'hauteur'       => $hauteur,
+                'volume_mesure' => $data['volume_mesure'] ?? 0,
+                'commentaire'   => $data['commentaire'] ?? null,
+                'status'        => true,
+
             ]);
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Lecture de cuve enregistrée avec succès.',
-                'data'    => new VenteLitreResource(
-                    $lecture->load('cuve.station')
+                'message' => 'Jaugeage enregistré avec succès.',
+                'data'    => new JaugeageCuveResource(
+                    $jaugeage->load('cuve.station')
                 ),
             ], 201);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
 
             DB::rollBack();
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de l’enregistrement de la lecture cuve.',
+                'message' => 'Erreur lors de l’enregistrement du jaugeage.',
                 'error'   => $e->getMessage(),
             ], 500);
+
         }
     }
 
     /**
      * =========================
-     * SUPPRESSION (ROLLBACK STOCK)
+     * SUPPRESSION JAUGEAGE
      * =========================
      */
     public function delete(int $id)
@@ -139,27 +153,28 @@ class VenteLitreService
         DB::beginTransaction();
 
         try {
-            $vente = VenteLitre::visible()
+
+            $jaugeage = JaugeageCuve::visible()
                 ->with('cuve')
                 ->lockForUpdate()
                 ->find($id);
 
-            if (! $vente) {
+            if (! $jaugeage) {
+
                 return response()->json([
                     'status'  => 404,
-                    'message' => 'Vente introuvable.',
+                    'message' => 'Jaugeage introuvable.',
                 ], 404);
+
             }
 
-           
-
-            $vente->delete();
+            $jaugeage->delete();
 
             DB::commit();
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Vente supprimée et stock restauré.',
+                'message' => 'Jaugeage supprimé avec succès.',
             ], 200);
 
         } catch (Throwable $e) {
@@ -168,8 +183,9 @@ class VenteLitreService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la suppression de la vente.',
+                'message' => 'Erreur lors de la suppression du jaugeage.',
             ], 500);
+
         }
     }
 }

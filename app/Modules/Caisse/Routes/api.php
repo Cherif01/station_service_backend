@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Caisse\Controllers\ChargeCategoryController;
 use App\Modules\Caisse\Controllers\CompteController;
+use App\Modules\Caisse\Controllers\OperationChargeController;
 use App\Modules\Caisse\Controllers\OperationCompteController;
 use App\Modules\Caisse\Controllers\TypeOperationController;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +13,8 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])
     ->group(function () {
 
         Route::apiResource('comptes', CompteController::class);
+        Route::apiResource('categori-charges', ChargeCategoryController::class);
+        Route::apiResource('operations-charges', OperationChargeController::class);
 
         Route::apiResource('type-operations', TypeOperationController::class);
 
@@ -53,5 +57,9 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])
             'transfert-intercomptes/periode',
             [OperationCompteController::class, 'getAllTransfertsByPeriode']
         );
+
+        
+
+Route::get('resume-mensuel', [OperationCompteController::class, 'resumeMensuel']);
 
     });

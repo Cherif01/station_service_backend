@@ -15,15 +15,11 @@ return new class extends Migration
 
             $table->id();
 
-            // 🔹 Relations
-            $table->foreignId('id_client')
-                ->constrained('clients')
-                ->cascadeOnUpdate();
-
-            $table->foreignId('id_station')
-                ->nullable()
-                ->constrained('stations')
-                ->cascadeOnUpdate();
+            // 🔹 Liaison principale avec la vente
+            $table->foreignId('id_init_vente')
+                ->constrained('init_ventes')
+                ->cascadeOnUpdate()
+                ->cascadeOnDelete();
 
             // 🔹 Données métier
             $table->date('date')->nullable();
@@ -34,7 +30,7 @@ return new class extends Migration
 
             $table->string('commentaire')->nullable();
 
-            // 🔹 Audit (comme ton standard)
+            // 🔹 Audit
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')

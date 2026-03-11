@@ -2,11 +2,11 @@
 
 namespace App\Modules\Vente\Resources;
 
-use App\Modules\Vente\Models\VenteLitre;
+use App\Modules\Vente\Models\JaugeageCuve;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class ProduitResource extends JsonResource
+class CuveResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
@@ -15,60 +15,72 @@ class ProduitResource extends JsonResource
          * 🔹 DERNIÈRE MESURE RÉELLE (JAUGEAGE)
          * =================================================
          */
-        $derniereMesure = VenteLitre::visible()
+        $derniereMesure = JaugeageCuve::visible()
             ->where('id_cuve', $this->id)
-            ->orderBy('created_at', 'desc')
+            ->orderByDesc('created_at')
             ->first();
 
         $stockPhysiqueActuel = $derniereMesure
-            ? (float) $derniereMesure->qte_vendu
+            ? (float) $derniereMesure->volume_mesure
             : 0;
 
         return [
-            // =========================
-            // IDENTITÉ CUVE
-            // =========================
+
+            /**
+             * =========================
+             * IDENTITÉ CUVE
+             * =========================
+             */
             'id'        => $this->id,
             'reference' => $this->reference,
             'libelle'   => $this->libelle,
             'status'    => (bool) $this->status,
 
-            // =========================
-            // DONNÉES DE STOCK (CUVE)
-            // =========================
-            'type'        => $this->type_cuve, // ex : gasoil, essence
-            'qt_initial'  => (float) $this->qt_initial,
+            /**
+             * =========================
+             * DONNÉES STOCK
+             * =========================
+             */
+            'type'       => $this->type_cuve,
+            'qt_initial' => (float) $this->qt_initial,
 
             /**
-             * ⚠️ Valeur DB (informatif uniquement)
+             * ⚠️ Valeur stock DB (informatif)
              */
             'qt_actuelle' => (float) $this->qt_actuelle,
 
             /**
-             * ✅ VÉRITÉ MÉTIER (UTILISÉE PAR LE FRONT)
+             * ✅ VÉRITÉ MÉTIER
              */
             'stock_physique_actuel' => $stockPhysiqueActuel,
-            'date_derniere_mesure'  => $derniereMesure
+
+            'date_derniere_mesure' => $derniereMesure
                 ? $derniereMesure->created_at?->toDateTimeString()
                 : null,
 
-            // =========================
-            // PRIX (VENTE)
-            // =========================
+            /**
+             * =========================
+             * PRIX
+             * =========================
+             */
             'pu_vente'    => (float) $this->pu_vente,
             'pu_unitaire' => (float) $this->pu_unitaire,
 
-            // =========================
-            // STATION (si chargée)
-            // =========================
+            /**
+             * =========================
+             * STATION
+             * =========================
+             */
             'station' => $this->whenLoaded('station', fn () => [
                 'id'      => $this->station->id,
                 'libelle' => $this->station->libelle,
             ]),
 
-            // =========================
-            // AUDIT
-            // =========================
+            /**
+             * =========================
+             * AUDIT
+             * =========================
+             */
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,
 
