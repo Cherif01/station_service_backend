@@ -10,6 +10,6 @@ Route::prefix('v1/admin')->middleware('station.db')->group(function () {
     Route::middleware(['auth:sanctum','active.st'])->group(function () {
         Route::apiResource('users', UserController::class);
         Route::get('pompiste-dispo',[UserController::class,'pompisteDisp']);
-        Route::apiResource('affectation', AffectationController::class);
+        Route::apiResource('affectations', AffectationController::class);
     });
 });
