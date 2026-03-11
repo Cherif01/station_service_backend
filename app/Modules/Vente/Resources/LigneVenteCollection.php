@@ -9,57 +9,42 @@ class LigneVenteCollection extends ResourceCollection
 {
     public function toArray(Request $request): array
     {
-        return [
+        return $this->collection->map(function ($item) {
 
-            'status' => 200,
+            return [
 
-            'data' => $this->collection->map(function ($item) {
+                'id' => $item->id,
 
-                return [
+                'index_debut' => (float) $item->index_debut,
+                'index_fin'   => (float) $item->index_fin,
+                'qte_vendu'   => (float) $item->qte_vendu,
+                'retour_cuve' => (float) $item->retour_cuve,
 
-                    'id' => $item->id,
+                'status' => $item->status ? 'validée' : 'en cours',
 
-                    'index_debut' => (float) $item->index_debut,
-                    'index_fin'   => (float) $item->index_fin,
-                    'qte_vendu'   => (float) $item->qte_vendu,
-                    'retour_cuve' => (float) $item->retour_cuve,
+                'station' => $item->affectation?->pompe?->station
+                    ? [
+                        'id'      => $item->affectation->pompe->station->id,
+                        'libelle' => $item->affectation->pompe->station->libelle,
+                    ]
+                    : null,
 
-                    'status' => $item->status ? 'validée' : 'en cours',
+                'pompe' => $item->affectation?->pompe
+                    ? [
+                        'id'        => $item->affectation->pompe->id,
+                        'libelle'   => $item->affectation->pompe->libelle,
+                        'reference' => $item->affectation->pompe->reference,
+                    ]
+                    : null,
 
-                    /**
-                     * STATION
-                     */
-                    'station' => $item->affectation?->pompe?->station
-                        ? [
-                            'id'      => $item->affectation->pompe->station->id,
-                            'libelle' => $item->affectation->pompe->station->libelle,
-                        ]
-                        : null,
+                'created_by' => $item->createdBy?->name,
+                'modify_by'  => $item->modifiedBy?->name,
 
-                    /**
-                     * POMPE
-                     */
-                    'pompe' => $item->affectation?->pompe
-                        ? [
-                            'id'        => $item->affectation->pompe->id,
-                            'libelle'   => $item->affectation->pompe->libelle,
-                            'reference' => $item->affectation->pompe->reference,
-                        ]
-                        : null,
+                'created_at' => $item->created_at?->toDateTimeString(),
+                'updated_at' => $item->updated_at?->toDateTimeString(),
 
-                    /**
-                     * AUDIT
-                     */
-                    'created_by' => $item->createdBy?->name,
-                    'modify_by'  => $item->modifiedBy?->name,
+            ];
 
-                    'created_at' => $item->created_at?->toDateTimeString(),
-                    'updated_at' => $item->updated_at?->toDateTimeString(),
-
-                ];
-
-            })->values()
-
-        ];
+        })->values()->toArray();
     }
 }
