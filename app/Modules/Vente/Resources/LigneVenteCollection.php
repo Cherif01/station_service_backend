@@ -20,7 +20,7 @@ class LigneVenteCollection extends ResourceCollection
                 'qte_vendu'   => (float) $item->qte_vendu,
                 'retour_cuve' => (float) $item->retour_cuve,
 
-                'status' => $item->status ? 'validée' : 'en cours',
+                'status' => $item->status ? 'valider' : 'en cours',
 
                 'station' => $item->affectation?->pompe?->station
                     ? [

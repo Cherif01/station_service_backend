@@ -131,380 +131,382 @@ class LigneVenteService
      * INITIALISATION DES LIGNES
      * =========================
      */
-   public function store(array $data): JsonResponse
-{
-    DB::beginTransaction();
+    public function store(array $data): JsonResponse
+    {
+        DB::beginTransaction();
 
-    try {
+        try {
 
-        $stationId = $data['id_station'];
-
-        /**
-         * ===============================
-         * récupérer pompes
-         * ===============================
-         */
-        $pompes = Pompe::visible()
-            ->where('id_station', $stationId)
-            ->get();
-
-        if ($pompes->isEmpty()) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Aucune pompe trouvée pour cette station.',
-            ], 404);
-        }
-
-        /**
-         * ===============================
-         * récupérer pompistes
-         * ===============================
-         */
-        $pompistes = User::visible()
-            ->where('role', 'pompiste')
-            ->where('id_station', $stationId)
-            ->get();
-
-        if ($pompistes->isEmpty()) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Aucun pompiste disponible.',
-            ], 404);
-        }
-
-        $countPompistes = $pompistes->count();
-        $i              = 0;
-
-        foreach ($pompes as $pompe) {
+            $stationId = $data['id_station'];
 
             /**
              * ===============================
-             * éviter doublon ligne vente
+             * récupérer pompes
              * ===============================
              */
-            $existe = LigneVente::visible()
-                ->whereDate('created_at', today())
-                ->whereHas('affectation', function ($q) use ($pompe) {
-                    $q->where('id_pompe', $pompe->id);
-                })
-                ->exists();
+            $pompes = Pompe::visible()
+                ->where('id_station', $stationId)
+                ->get();
 
-            if ($existe) {
-                continue;
+            if ($pompes->isEmpty()) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Aucune pompe trouvée pour cette station.',
+                ], 404);
             }
 
             /**
              * ===============================
-             * trouver cuve
+             * récupérer pompistes
              * ===============================
              */
-            $cuve = Cuve::whereRaw('LOWER(libelle) = LOWER(?)', [$pompe->type_pompe])
-                ->first();
+            $pompistes = User::visible()
+                ->where('role', 'pompiste')
+                ->where('id_station', $stationId)
+                ->get();
 
-            if (! $cuve) {
-                continue;
+            if ($pompistes->isEmpty()) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Aucun pompiste disponible.',
+                ], 404);
             }
 
-            /**
-             * ===============================
-             * dernier index pompe
-             * ===============================
-             */
-            $indexData = $this->pompeService
-                ->getDernierIndexPourAffectation($pompe->id);
+            $countPompistes = $pompistes->count();
+            $i              = 0;
 
-            $indexDebut = $indexData['index_debut'] ?? 0;
+            foreach ($pompes as $pompe) {
 
-            /**
-             * ===============================
-             * choisir pompiste (rotation)
-             * ===============================
-             */
-            $user = $pompistes[$i % $countPompistes];
+                /**
+                 * ===============================
+                 * éviter doublon ligne vente
+                 * ===============================
+                 */
+                $existe = LigneVente::visible()
+                    ->whereDate('created_at', today())
+                    ->whereHas('affectation', function ($q) use ($pompe) {
+                        $q->where('id_pompe', $pompe->id);
+                    })
+                    ->exists();
 
-            /**
-             * ===============================
-             * créer affectation
-             * ===============================
-             */
-            $affectation = Affectation::create([
-                'id_user'    => $user->id,
-                'id_station' => $stationId,
-                'id_pompe'   => $pompe->id,
-                'status'     => true,
-            ]);
+                if ($existe) {
+                    continue;
+                }
 
-            /**
-             * ===============================
-             * créer ligne vente
-             * ===============================
-             */
-            LigneVente::create([
-                'id_station'     => $stationId,
-                'id_cuve'        => $cuve->id,
-                'id_affectation' => $affectation->id,
-                'index_debut'    => $indexDebut,
-                'index_fin'      => null,
-                'retour_cuve'    => 0,
-                'qte_vendu'      => 0,
-                'prix_unitaire'  => $cuve->pu_vente,
-                'status'         => false,
-            ]);
+                /**
+                 * ===============================
+                 * trouver cuve
+                 * ===============================
+                 */
+                $cuve = Cuve::whereRaw('LOWER(libelle) = LOWER(?)', [$pompe->type_pompe])
+                    ->first();
 
-            $i++;
-        }
+                if (! $cuve) {
+                    continue;
+                }
 
-        DB::commit();
+                /**
+                 * ===============================
+                 * dernier index pompe
+                 * ===============================
+                 */
+                $indexData = $this->pompeService
+                    ->getDernierIndexPourAffectation($pompe->id);
 
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Initialisation des pompes effectuée.',
-        ], 200);
+                $indexDebut = $indexData['index_debut'] ?? 0;
 
-    } catch (\Throwable $e) {
+                /**
+                 * ===============================
+                 * choisir pompiste (rotation)
+                 * ===============================
+                 */
+                $user = $pompistes[$i % $countPompistes];
 
-        DB::rollBack();
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de l’initialisation.',
-            'error'   => $e->getMessage(),
-        ], 500);
-    }
-}
-    /**
-     * =========================
-     * CLÔTURE VENTE
-     * =========================
-     */
-   public function update(int $id, array $data): JsonResponse
-{
-    DB::beginTransaction();
-
-    try {
-
-        $item = LigneVente::visible()
-            ->lockForUpdate()
-            ->find($id);
-
-        if (! $item) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Ligne de vente introuvable.',
-            ],404);
-        }
-
-        if ((bool) $item->status === true) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 409,
-                'message' => 'Cette vente est déjà validée.',
-            ],409);
-        }
-
-        /**
-         * ==========================================
-         * INDEX
-         * ==========================================
-         */
-        $indexDebut = (float) $item->index_debut;
-        $indexFin   = $data['index_fin'] ?? null;
-
-        if ($indexFin === null) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 400,
-                'message' => 'Index fin requis pour la validation.',
-            ],400);
-        }
-
-        $indexFin = (float) $indexFin;
-
-        if ($indexFin < $indexDebut) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 409,
-                'message' => 'Index incohérent : index_fin < index_debut.',
-            ],409);
-        }
-
-        /**
-         * ==========================================
-         * RETOUR CUVE
-         * ==========================================
-         */
-        $retourCuve = (float) ($data['retour_cuve'] ?? 0);
-
-        if ($retourCuve < 0) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 409,
-                'message' => 'Retour cuve invalide.',
-            ],409);
-        }
-
-        /**
-         * ==========================================
-         * QUANTITÉ VENDUE
-         * ==========================================
-         */
-        $qteVendu = ($indexFin - $indexDebut) - $retourCuve;
-
-        if ($qteVendu <= 0) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 409,
-                'message' => 'Quantité vendue invalide.',
-            ],409);
-        }
-
-        /**
-         * ==========================================
-         * CUVE
-         * ==========================================
-         */
-        $cuve = Cuve::lockForUpdate()->find($item->id_cuve);
-
-        if (! $cuve) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Cuve introuvable.',
-            ],404);
-        }
-
-        $puVente = (float) $cuve->pu_vente;
-
-        if ($puVente <= 0) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 409,
-                'message' => 'Prix unitaire invalide pour cette cuve.',
-            ],409);
-        }
-
-        /**
-         * ==========================================
-         * UPDATE VENTE
-         * ==========================================
-         */
-        $item->update([
-            'index_fin'     => $indexFin,
-            'retour_cuve'   => $retourCuve,
-            'qte_vendu'     => $qteVendu,
-            'prix_unitaire' => $puVente,
-            'status'        => true,
-        ]);
-
-        /**
-         * ==========================================
-         * MONTANT
-         * ==========================================
-         */
-        $montant = $qteVendu * $puVente;
-
-        $commentaireAuto =
-            "Vente validée\n".
-            "Volume : {$qteVendu} L\n".
-            "Retour cuve : {$retourCuve} L\n".
-            "PU : {$puVente} GNF\n".
-            "Montant : {$montant} GNF\n".
-            "Cuve : {$cuve->libelle}";
-
-        ValidationVente::create([
-            'id_vente'    => $item->id,
-            'commentaire' => $commentaireAuto,
-        ]);
-
-        /**
-         * ==========================================
-         * FERMETURE AFFECTATION
-         * ==========================================
-         */
-        if ($item->id_affectation) {
-
-            $affectation = Affectation::visible()
-                ->where('id', $item->id_affectation)
-                ->where('status', true)
-                ->lockForUpdate()
-                ->first();
-
-            if ($affectation) {
-                $affectation->update([
-                    'status' => false,
+                /**
+                 * ===============================
+                 * créer affectation
+                 * ===============================
+                 */
+                $affectation = Affectation::create([
+                    'id_user'    => $user->id,
+                    'id_station' => $stationId,
+                    'id_pompe'   => $pompe->id,
+                    'status'     => true,
                 ]);
+
+                /**
+                 * ===============================
+                 * créer ligne vente
+                 * ===============================
+                 */
+                LigneVente::create([
+                    'id_station'     => $stationId,
+                    'id_cuve'        => $cuve->id,
+                    'id_affectation' => $affectation->id,
+                    'index_debut'    => $indexDebut,
+                    'index_fin'      => null,
+                    'retour_cuve'    => 0,
+                    'qte_vendu'      => 0,
+                    'prix_unitaire'  => $cuve->pu_vente,
+                    'status'         => false,
+                ]);
+
+                $i++;
             }
-        }
 
-        /**
-         * ==========================================
-         * COMPTABILITÉ
-         * ==========================================
-         */
-        $compte = Compte::where('id_station', $item->id_station)
-            ->lockForUpdate()
-            ->first();
+            DB::commit();
 
-        if (! $compte) {
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Initialisation des pompes effectuée.',
+            ], 200);
+
+        } catch (\Throwable $e) {
 
             DB::rollBack();
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Compte de la station introuvable.',
-            ],500);
+                'message' => 'Erreur lors de l’initialisation.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        OperationCompte::create([
-            'id_compte'         => $compte->id,
-            'id_type_operation' => 1,
-            'montant'           => $montant,
-            'libelle'           => 'Vente carburant - '.$cuve->libelle,
-            'reference'         => 'VENTE-'.$item->id,
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Vente clôturée avec succès.',
-            'data'    => new LigneVenteResource($item->fresh()),
-        ],200);
-
-    } catch (Throwable $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur interne lors de la clôture.',
-            'error'   => $e->getMessage(),
-        ],500);
     }
-}
+    /**
+     * =========================
+     * CLÔTURE VENTE
+     * =========================
+     */
+    public function update(int $id, array $data): JsonResponse
+    {
+        DB::beginTransaction();
+
+        try {
+
+            $item = LigneVente::visible()
+                ->lockForUpdate()
+                ->find($id);
+
+            if (! $item) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Ligne de vente introuvable.',
+                ], 404);
+            }
+
+            if ((bool) $item->status === true) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Cette vente est déjà validée.',
+                ], 409);
+            }
+
+            /**
+             * ==========================================
+             * INDEX
+             * ==========================================
+             */
+            $indexDebut = (float) $item->index_debut;
+            $indexFin   = $data['index_fin'] ?? null;
+
+            if ($indexFin === null) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 400,
+                    'message' => 'Index fin requis pour la validation.',
+                ], 400);
+            }
+
+            $indexFin = (float) $indexFin;
+
+            if ($indexFin < $indexDebut) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Index incohérent : index_fin < index_debut.',
+                ], 409);
+            }
+
+            /**
+             * ==========================================
+             * RETOUR CUVE
+             * ==========================================
+             */
+            $retourCuve = (float) ($data['retour_cuve'] ?? 0);
+
+            if ($retourCuve < 0) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Retour cuve invalide.',
+                ], 409);
+            }
+
+            /**
+             * ==========================================
+             * QUANTITÉ VENDUE
+             * ==========================================
+             */
+            $qteVendu = ($indexFin - $indexDebut) - $retourCuve;
+
+            if ($qteVendu <= 0) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Quantité vendue invalide.',
+                ], 409);
+            }
+
+            /**
+             * ==========================================
+             * CUVE
+             * ==========================================
+             */
+            $cuve = Cuve::lockForUpdate()->find($item->id_cuve);
+
+            if (! $cuve) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Cuve introuvable.',
+                ], 404);
+            }
+
+            $puVente = (float) $cuve->pu_vente;
+
+            if ($puVente <= 0) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Prix unitaire invalide pour cette cuve.',
+                ], 409);
+            }
+
+            /**
+             * ==========================================
+             * UPDATE VENTE
+             * ==========================================
+             */
+            $status = $data['status'] ?? true;
+
+            $item->update([
+                'index_fin'     => $indexFin,
+                'retour_cuve'   => $retourCuve,
+                'qte_vendu'     => $qteVendu,
+                'prix_unitaire' => $puVente,
+                'status'        => $status,
+            ]);
+
+            /**
+             * ==========================================
+             * MONTANT
+             * ==========================================
+             */
+            $montant = $qteVendu * $puVente;
+
+            $commentaireAuto =
+                "Vente validée\n" .
+                "Volume : {$qteVendu} L\n" .
+                "Retour cuve : {$retourCuve} L\n" .
+                "PU : {$puVente} GNF\n" .
+                "Montant : {$montant} GNF\n" .
+                "Cuve : {$cuve->libelle}";
+
+            ValidationVente::create([
+                'id_vente'    => $item->id,
+                'commentaire' => $commentaireAuto,
+            ]);
+
+            /**
+             * ==========================================
+             * FERMETURE AFFECTATION
+             * ==========================================
+             */
+            if ($item->id_affectation) {
+
+                $affectation = Affectation::visible()
+                    ->where('id', $item->id_affectation)
+                    ->where('status', true)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($affectation) {
+                    $affectation->update([
+                        'status' => false,
+                    ]);
+                }
+            }
+
+            /**
+             * ==========================================
+             * COMPTABILITÉ
+             * ==========================================
+             */
+            $compte = Compte::where('id_station', $item->id_station)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $compte) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 500,
+                    'message' => 'Compte de la station introuvable.',
+                ], 500);
+            }
+
+            OperationCompte::create([
+                'id_compte'         => $compte->id,
+                'id_type_operation' => 1,
+                'montant'           => $montant,
+                'libelle'           => 'Vente carburant - ' . $cuve->libelle,
+                'reference'         => 'VENTE-' . $item->id,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Vente clôturée avec succès.',
+                'data'    => new LigneVenteResource($item->fresh()),
+            ], 200);
+
+        } catch (Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur interne lors de la clôture.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
 
     /**
      * =========================
