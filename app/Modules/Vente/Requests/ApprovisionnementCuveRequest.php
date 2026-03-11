@@ -16,6 +16,11 @@ class ApprovisionnementCuveRequest extends FormRequest
         return [
             'id_cuve'      => ['required', 'exists:cuves,id'],
             'qte_appro'    => ['required', 'numeric', 'min:0.01'],
+            'id_fournisseur' => [
+                'nullable',
+                'exists:fournisseurs,id'
+            ],
+
             'pu_unitaire'  => ['required', 'numeric', 'min:0'],
             'commentaire'  => ['nullable', 'string'],
         ];

@@ -15,6 +15,7 @@ class ApprovisionnementCuve extends Model
         'id_cuve',
         'qte_appro',
         'type_appro',
+        'id_fournisseur',
         'pu_unitaire',
         'commentaire',
         'created_by',
