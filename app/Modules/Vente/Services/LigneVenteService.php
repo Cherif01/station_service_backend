@@ -61,37 +61,37 @@ class LigneVenteService
         }
     }
 
-   public function getAll1(): JsonResponse
-{
-    try {
+    public function getAll1(): JsonResponse
+    {
+        try {
 
-        $items = LigneVente::visible()
-            ->with([
-                'station',
-                'cuve',
-                'affectation.pompe.station',
-                'affectation.user',
-                'createdBy',
-                'modifiedBy',
-            ])
-            ->whereDate('created_at', today()) // seulement aujourd'hui
-            ->orderByDesc('created_at')
-            ->get();
+            $items = LigneVente::visible()
+                ->with([
+                    'station',
+                    'cuve',
+                    'affectation.pompe.station',
+                    'affectation.user',
+                    'createdBy',
+                    'modifiedBy',
+                ])
+                ->whereDate('created_at', today()) // seulement aujourd'hui
+                ->orderByDesc('created_at')
+                ->get();
 
-        return response()->json([
-            'status' => 200,
-            'data'   => new LigneVenteCollection($items),
-        ],200);
+            return response()->json([
+                'status' => 200,
+                'data'   => new LigneVenteCollection($items),
+            ], 200);
 
-    } catch (Throwable $e) {
+        } catch (Throwable $e) {
 
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de la récupération des lignes de vente.',
-            'error'   => $e->getMessage(),
-        ],500);
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la récupération des lignes de vente.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
     }
-}
     /**
      * =========================
      * DÉTAIL D’UNE LIGNE
@@ -131,138 +131,137 @@ class LigneVenteService
      * INITIALISATION DES LIGNES
      * =========================
      */
-   public function store(array $data): JsonResponse
-{
-    DB::beginTransaction();
+    public function store(array $data): JsonResponse
+    {
+        DB::beginTransaction();
 
-    try {
+        try {
 
-        $stationId = $data['id_station'];
-
-        /**
-         * ===============================
-         * récupérer pompes
-         * ===============================
-         */
-        $pompes = Pompe::visible()
-            ->where('id_station', $stationId)
-            ->get();
-
-        if ($pompes->isEmpty()) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Aucune pompe trouvée pour cette station.',
-            ],404);
-        }
-
-        /**
-         * ===============================
-         * récupérer pompistes
-         * ===============================
-         */
-        $pompistes = User::visible()
-            ->where('role','pompiste')
-            ->where('id_station',$stationId)
-            ->get();
-
-        if ($pompistes->isEmpty()) {
-
-            DB::rollBack();
-
-            return response()->json([
-                'status'  => 404,
-                'message' => 'Aucun pompiste disponible.',
-            ],404);
-        }
-
-        $countPompistes = $pompistes->count();
-        $i = 0;
-
-        foreach ($pompes as $pompe) {
+            $stationId = $data['id_station'];
 
             /**
              * ===============================
-             * trouver cuve
+             * récupérer pompes
              * ===============================
              */
-            $cuve = Cuve::visible()
-                ->whereRaw('LOWER(libelle) = ?', [strtolower($pompe->type_pompe)])
-                ->first();
+            $pompes = Pompe::visible()
+                ->where('id_station', $stationId)
+                ->get();
 
-            if (!$cuve) {
-                continue;
+            if ($pompes->isEmpty()) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Aucune pompe trouvée pour cette station.',
+                ], 404);
             }
 
             /**
              * ===============================
-             * dernier index pompe
+             * récupérer pompistes
              * ===============================
              */
-            $indexData = $this->pompeService
-                ->getDernierIndexPourAffectation($pompe->id);
+            $pompistes = User::visible()
+                ->where('role', 'pompiste')
+                ->where('id_station', $stationId)
+                ->get();
 
-            $indexDebut = $indexData['index_debut'] ?? 0;
+            if ($pompistes->isEmpty()) {
 
-            /**
-             * ===============================
-             * choisir pompiste (rotation)
-             * ===============================
-             */
-            $user = $pompistes[$i % $countPompistes];
+                DB::rollBack();
 
-            /**
-             * ===============================
-             * créer affectation
-             * ===============================
-             */
-            $affectation = Affectation::create([
-                'id_user'    => $user->id,
-                'id_station' => $stationId,
-                'id_pompe'   => $pompe->id,
-                'status'     => true
-            ]);
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Aucun pompiste disponible.',
+                ], 404);
+            }
 
-            /**
-             * ===============================
-             * créer ligne vente
-             * ===============================
-             */
-            LigneVente::create([
-               
-                'id_cuve'        => $cuve->id,
-                'id_affectation' => $affectation->id,
-                'index_debut'    => $indexDebut,
-                'index_fin'      => null,
-                'retour_cuve'    => 0,
-                'qte_vendu'      => 0,
-                'prix_unitaire'  => $cuve->pu_vente,
-                'status'         => false
-            ]);
+            $countPompistes = $pompistes->count();
+            $i              = 0;
 
-            $i++;
+            foreach ($pompes as $pompe) {
+
+                /**
+                 * ===============================
+                 * trouver cuve
+                 * ===============================
+                 */
+                $cuve = Cuve::whereRaw('LOWER(libelle) = LOWER(?)', [$pompe->type_pompe])
+                    ->first();
+
+                if (! $cuve) {
+                    continue;
+                }
+
+                /**
+                 * ===============================
+                 * dernier index pompe
+                 * ===============================
+                 */
+                $indexData = $this->pompeService
+                    ->getDernierIndexPourAffectation($pompe->id);
+
+                $indexDebut = $indexData['index_debut'] ?? 0;
+
+                /**
+                 * ===============================
+                 * choisir pompiste (rotation)
+                 * ===============================
+                 */
+                $user = $pompistes[$i % $countPompistes];
+
+                /**
+                 * ===============================
+                 * créer affectation
+                 * ===============================
+                 */
+                $affectation = Affectation::create([
+                    'id_user'    => $user->id,
+                    'id_station' => $stationId,
+                    'id_pompe'   => $pompe->id,
+                    'status'     => true,
+                ]);
+
+                /**
+                 * ===============================
+                 * créer ligne vente
+                 * ===============================
+                 */
+                LigneVente::create([
+
+                    'id_cuve'        => $cuve->id,
+                    'id_affectation' => $affectation->id,
+                    'index_debut'    => $indexDebut,
+                    'index_fin'      => null,
+                    'retour_cuve'    => 0,
+                    'qte_vendu'      => 0,
+                    'prix_unitaire'  => $cuve->pu_vente,
+                    'status'         => false,
+                ]);
+
+                $i++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Initialisation des pompes effectuée.',
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de l’initialisation.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        DB::commit();
-
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Initialisation des pompes effectuée.',
-        ],200);
-
-    } catch (\Throwable $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors de l’initialisation.',
-            'error'   => $e->getMessage(),
-        ],500);
     }
-}
     /**
      * =========================
      * CLÔTURE VENTE
