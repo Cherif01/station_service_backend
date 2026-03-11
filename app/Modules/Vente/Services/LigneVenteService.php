@@ -131,137 +131,153 @@ class LigneVenteService
      * INITIALISATION DES LIGNES
      * =========================
      */
-    public function store(array $data): JsonResponse
-    {
-        DB::beginTransaction();
+   public function store(array $data): JsonResponse
+{
+    DB::beginTransaction();
 
-        try {
+    try {
 
-            $stationId = $data['id_station'];
+        $stationId = $data['id_station'];
 
-            /**
-             * ===============================
-             * récupérer pompes
-             * ===============================
-             */
-            $pompes = Pompe::visible()
-                ->where('id_station', $stationId)
-                ->get();
+        /**
+         * ===============================
+         * récupérer pompes
+         * ===============================
+         */
+        $pompes = Pompe::visible()
+            ->where('id_station', $stationId)
+            ->get();
 
-            if ($pompes->isEmpty()) {
-
-                DB::rollBack();
-
-                return response()->json([
-                    'status'  => 404,
-                    'message' => 'Aucune pompe trouvée pour cette station.',
-                ], 404);
-            }
-
-            /**
-             * ===============================
-             * récupérer pompistes
-             * ===============================
-             */
-            $pompistes = User::visible()
-                ->where('role', 'pompiste')
-                ->where('id_station', $stationId)
-                ->get();
-
-            if ($pompistes->isEmpty()) {
-
-                DB::rollBack();
-
-                return response()->json([
-                    'status'  => 404,
-                    'message' => 'Aucun pompiste disponible.',
-                ], 404);
-            }
-
-            $countPompistes = $pompistes->count();
-            $i              = 0;
-
-            foreach ($pompes as $pompe) {
-
-                /**
-                 * ===============================
-                 * trouver cuve
-                 * ===============================
-                 */
-                $cuve = Cuve::whereRaw('LOWER(libelle) = LOWER(?)', [$pompe->type_pompe])
-                    ->first();
-
-                if (! $cuve) {
-                    continue;
-                }
-
-                /**
-                 * ===============================
-                 * dernier index pompe
-                 * ===============================
-                 */
-                $indexData = $this->pompeService
-                    ->getDernierIndexPourAffectation($pompe->id);
-
-                $indexDebut = $indexData['index_debut'] ?? 0;
-
-                /**
-                 * ===============================
-                 * choisir pompiste (rotation)
-                 * ===============================
-                 */
-                $user = $pompistes[$i % $countPompistes];
-
-                /**
-                 * ===============================
-                 * créer affectation
-                 * ===============================
-                 */
-                $affectation = Affectation::create([
-                    'id_user'    => $user->id,
-                    'id_station' => $stationId,
-                    'id_pompe'   => $pompe->id,
-                    'status'     => true,
-                ]);
-
-                /**
-                 * ===============================
-                 * créer ligne vente
-                 * ===============================
-                 */
-                LigneVente::create([
-
-                    'id_cuve'        => $cuve->id,
-                    'id_affectation' => $affectation->id,
-                    'index_debut'    => $indexDebut,
-                    'index_fin'      => null,
-                    'retour_cuve'    => 0,
-                    'qte_vendu'      => 0,
-                    'prix_unitaire'  => $cuve->pu_vente,
-                    'status'         => false,
-                ]);
-
-                $i++;
-            }
-
-            DB::commit();
-
-            return response()->json([
-                'status'  => 200,
-                'message' => 'Initialisation des pompes effectuée.',
-            ], 200);
-
-        } catch (\Throwable $e) {
+        if ($pompes->isEmpty()) {
 
             DB::rollBack();
 
             return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de l’initialisation.',
-                'error'   => $e->getMessage(),
-            ], 500);
+                'status'  => 404,
+                'message' => 'Aucune pompe trouvée pour cette station.',
+            ], 404);
         }
+
+        /**
+         * ===============================
+         * récupérer pompistes
+         * ===============================
+         */
+        $pompistes = User::visible()
+            ->where('role', 'pompiste')
+            ->where('id_station', $stationId)
+            ->get();
+
+        if ($pompistes->isEmpty()) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 404,
+                'message' => 'Aucun pompiste disponible.',
+            ], 404);
+        }
+
+        $countPompistes = $pompistes->count();
+        $i              = 0;
+
+        foreach ($pompes as $pompe) {
+
+            /**
+             * ===============================
+             * éviter doublon ligne vente
+             * ===============================
+             */
+            $existe = LigneVente::visible()
+                ->whereDate('created_at', today())
+                ->whereHas('affectation', function ($q) use ($pompe) {
+                    $q->where('id_pompe', $pompe->id);
+                })
+                ->exists();
+
+            if ($existe) {
+                continue;
+            }
+
+            /**
+             * ===============================
+             * trouver cuve
+             * ===============================
+             */
+            $cuve = Cuve::whereRaw('LOWER(libelle) = LOWER(?)', [$pompe->type_pompe])
+                ->first();
+
+            if (! $cuve) {
+                continue;
+            }
+
+            /**
+             * ===============================
+             * dernier index pompe
+             * ===============================
+             */
+            $indexData = $this->pompeService
+                ->getDernierIndexPourAffectation($pompe->id);
+
+            $indexDebut = $indexData['index_debut'] ?? 0;
+
+            /**
+             * ===============================
+             * choisir pompiste (rotation)
+             * ===============================
+             */
+            $user = $pompistes[$i % $countPompistes];
+
+            /**
+             * ===============================
+             * créer affectation
+             * ===============================
+             */
+            $affectation = Affectation::create([
+                'id_user'    => $user->id,
+                'id_station' => $stationId,
+                'id_pompe'   => $pompe->id,
+                'status'     => true,
+            ]);
+
+            /**
+             * ===============================
+             * créer ligne vente
+             * ===============================
+             */
+            LigneVente::create([
+                'id_station'     => $stationId,
+                'id_cuve'        => $cuve->id,
+                'id_affectation' => $affectation->id,
+                'index_debut'    => $indexDebut,
+                'index_fin'      => null,
+                'retour_cuve'    => 0,
+                'qte_vendu'      => 0,
+                'prix_unitaire'  => $cuve->pu_vente,
+                'status'         => false,
+            ]);
+
+            $i++;
+        }
+
+        DB::commit();
+
+        return response()->json([
+            'status'  => 200,
+            'message' => 'Initialisation des pompes effectuée.',
+        ], 200);
+
+    } catch (\Throwable $e) {
+
+        DB::rollBack();
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de l’initialisation.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
     /**
      * =========================
      * CLÔTURE VENTE
