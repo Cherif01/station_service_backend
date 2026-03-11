@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Administration\Models;
 
 use App\Modules\Settings\Models\Affectation;
@@ -46,11 +47,6 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * =================================================
-     * BOOT : AUDIT
-     * =================================================
-     */
     protected static function booted(): void
     {
         static::creating(function ($model) {
@@ -66,11 +62,6 @@ class User extends Authenticatable
         });
     }
 
-    /**
-     * =================================================
-     * SCOPE : VISIBILITÉ DES UTILISATEURS
-     * =================================================
-     */
     public function scopeVisible(Builder $query): Builder
     {
         $auth = Auth::user();
@@ -79,20 +70,9 @@ class User extends Authenticatable
             return $query->whereRaw('1 = 0');
         }
 
-        /**
-         * =================================================
-         * 🔹 STATION ACTIVE (via middleware)
-         * =================================================
-         */
         $activeStationId = request()->attributes->get('station_active_id');
 
         switch ($auth->role) {
-
-            /**
-                 * 🔥 SUPER ADMIN
-                 * → voit tout si aucune station active
-                 * → sinon agit comme un gérant de la station active
-                 */
             case 'super_admin':
 
                 if ($activeStationId) {
@@ -107,17 +87,13 @@ class User extends Authenticatable
 
                 return $query;
 
-            /**
-                 * 🔵 ADMIN
-                 * 🟡 GÉRANT
-                 * 🟣 SUPERVISEUR
-                 * → utilisateurs liés à la station active
-                 */
             case 'admin':
             case 'gerant':
             case 'superviseur':
 
-                $stationId = $activeStationId ?? $auth->id_station ?? optional($auth->activeAffectation())->id_station;
+                $stationId = $activeStationId
+                    ?? $auth->id_station
+                    ?? optional($auth->activeAffectation())->id_station;
 
                 if (! $stationId) {
                     return $query->whereRaw('1 = 0');
@@ -131,11 +107,6 @@ class User extends Authenticatable
                         });
                 });
 
-            /**
-                 * 🔴 POMPISTE
-                 * → même pompe si possible
-                 * → sinon même station
-                 */
             case 'pompiste':
 
                 $affectation = $auth->activeAffectation();
@@ -160,19 +131,11 @@ class User extends Authenticatable
 
                 return $query->whereRaw('1 = 0');
 
-            /**
-                 * ❌ AUTRES CAS
-                 */
             default:
                 return $query->whereRaw('1 = 0');
         }
     }
 
-    /**
-     * =================================================
-     * SCOPE : POMPISTES DISPONIBLES
-     * =================================================
-     */
     public function scopePompistesDisponibles(Builder $query): Builder
     {
         return $query
@@ -182,28 +145,17 @@ class User extends Authenticatable
             });
     }
 
-    /**
-     * =================================================
-     * MÉTHODES MÉTIER
-     * =================================================
-     */
     public function activeAffectation(): ?Affectation
     {
-        return Affectation::where('id_user', $this->id)
+        return $this->affectations()
             ->where('status', true)
             ->latest('created_at')
             ->first();
     }
 
-    /**
-     * =================================================
-     * RELATIONS
-     * =================================================
-     */
     public function affectations()
     {
-        return $this->hasMany(Affectation::class, 'id_user')
-            ->orderBy('created_at', 'desc');
+        return $this->hasMany(Affectation::class, 'id_user');
     }
 
     public function station()
@@ -215,9 +167,7 @@ class User extends Authenticatable
             'id',
             'id',
             'id_station'
-        )
-            ->where('affectations.status', true)
-            ->latest('affectations.created_at');
+        )->where('affectations.status', true);
     }
 
     public function ville(): BelongsTo

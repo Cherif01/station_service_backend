@@ -20,6 +20,7 @@ class LigneVente extends Model
         'id_affectation',
         'index_debut',
         'index_fin',
+        'retour_cuve',
         'qte_vendu',
         'prix_unitaire',
         'status',
@@ -47,74 +48,7 @@ class LigneVente extends Model
         });
     }
 
-    /**
-     * =========================
-     * SCOPE : VISIBILITÉ PAR RÔLE
-     * (100 % basé sur AFFECTATION)
-     * =========================
-     */
-    // public function scopeVisible(Builder $query): Builder
-    // {
-    //     $user = Auth::user();
-
-    //     if (! $user) {
-    //         return $query->whereRaw('1 = 0');
-    //     }
-
-    //     switch ($user->role) {
-
-    //         /**
-    //              * 🔥 SUPER ADMIN
-    //              * → accès total
-    //              */
-    //         case 'super_admin':
-    //             return $query;
-
-    //         /**
-    //              * 🔵 ADMIN / 🟣 SUPERVISEUR / 🟡 GÉRANT
-    //              * → ventes de la station issue
-    //              *   de la DERNIÈRE affectation active
-    //              */
-    //         case 'admin':
-    //         case 'superviseur':
-    //         case 'gerant':
-
-    //             $stationId = $user->affectations()
-    //                 ->where('status', true)
-    //                 ->latest('created_at')
-    //                 ->value('id_station');
-
-    //             if (! $stationId) {
-    //                 return $query->whereRaw('1 = 0');
-    //             }
-
-    //             return $query->where('id_station', $stationId);
-
-    //         /**
-    //              * 🔴 POMPISTE
-    //              * → toutes ses ventes, via TOUTES ses affectations
-    //              *   (actives ou non)
-    //              */
-    //         case 'pompiste':
-
-    //             $affectationIds = $user->affectations()
-    //                 ->pluck('id')
-    //                 ->filter()
-    //                 ->values()
-    //                 ->all();
-
-    //             if (empty($affectationIds)) {
-    //                 return $query->whereRaw('1 = 0');
-    //             }
-
-    //             return $query->whereIn('id_affectation', $affectationIds);
-    //         /**
-    //              * ❌ AUTRES CAS
-    //              */
-    //         default:
-    //             return $query->whereRaw('1 = 0');
-    //     }
-    // }
+    
     public function scopeVisible(Builder $query): Builder
     {
         $user = Auth::user();

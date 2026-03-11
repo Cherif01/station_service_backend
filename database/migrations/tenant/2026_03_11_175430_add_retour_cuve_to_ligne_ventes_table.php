@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('ligne_ventes', function (Blueprint $table) {
-            $table->decimal('retour_cuve', 15, 2)->nullable()->after('index_fin');
+            $table->decimal('retour_cuve', 15, 2)->default(0)->after('index_fin');
         });
     }
 

@@ -30,6 +30,7 @@ class LigneVenteRequest extends FormRequest
             'index_debut'    => ['nullable', 'numeric'],
             'index_fin'      => ['nullable', 'numeric'],
             'qte_vendu'      => ['nullable', 'numeric'],
+            'retour_cuve'      => ['nullable', 'numeric'],
             'commentaire'      => ['nullable', 'string'],
         ];
     }
