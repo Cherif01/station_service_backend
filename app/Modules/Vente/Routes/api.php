@@ -3,12 +3,13 @@
 use App\Modules\Vente\Controllers\ApprovisionnementCuveController;
 use App\Modules\Vente\Controllers\ClientController;
 use App\Modules\Vente\Controllers\CreanceController;
+use App\Modules\Vente\Controllers\CuveController;
 use App\Modules\Vente\Controllers\InitVenteController;
 use App\Modules\Vente\Controllers\LigneVenteController;
 use App\Modules\Vente\Controllers\PaiementController;
 use App\Modules\Vente\Controllers\PerteCuveController;
 use App\Modules\Vente\Controllers\ProduitController1;
-use App\Modules\Vente\Controllers\ProduitController;
+
 use App\Modules\Vente\Controllers\ServiceController;
 use App\Modules\Vente\Controllers\ValidationVenteController;
 use App\Modules\Vente\Controllers\VenteLitreController;
@@ -16,16 +17,16 @@ use App\Modules\Vente\Controllers\VenteProduitServiceController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente')->group(function () {
-    Route::apiResource('cuves', ProduitController::class);
+    Route::apiResource('cuves', CuveController::class);
     //  Route::apiResource('ligne-ventes',LigneVenteController::class);
     Route::get(
         'statistiques/cuves/journalier',
-        [ProduitController::class, 'calculerStockJournalierToutesCuves']
+        [CuveController::class, 'calculerStockJournalierToutesCuves']
     );
 
       Route::get(
         '/statistiques/cuves/periode',
-        [ProduitController::class, 'calculerToutesCuvesEntreDates']
+        [CuveController::class, 'calculerToutesCuvesEntreDates']
     );
     
     Route::post(

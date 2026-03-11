@@ -14,28 +14,21 @@ class StoreProduitRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // =========================
-            // IDENTITÉ CUVE
-            // =========================
-            'libelle'     => 'required|string|max:255',
-            'type_cuve'   => 'required|string|max:100',
+            'libelle'  => 'required|string|max:255',
+            'pu_vente' => 'required|numeric|min:0',
+        ];
+    }
 
-            // =========================
-            // STATION (OBLIGATOIRE)
-            // =========================
-            'id_station'  => 'required|exists:stations,id',
+    public function messages(): array
+    {
+        return [
+            'libelle.required'  => 'Le libellé est obligatoire.',
+            'libelle.string'    => 'Le libellé doit être une chaîne de caractères.',
+            'libelle.max'       => 'Le libellé ne doit pas dépasser 255 caractères.',
 
-            // =========================
-            // STOCK
-            // =========================
-            'qt_initial'  => 'nullable|numeric|min:0',
-            'qt_actuelle' => 'nullable|numeric|min:0',
-
-            // =========================
-            // PRIX
-            // =========================
-            'pu_vente'    => 'nullable|numeric|min:0',
-            'pu_unitaire' => 'nullable|numeric|min:0',
+            'pu_vente.required' => 'Le prix de vente est obligatoire.',
+            'pu_vente.numeric'  => 'Le prix de vente doit être un nombre.',
+            'pu_vente.min'      => 'Le prix de vente doit être supérieur ou égal à 0.',
         ];
     }
 }

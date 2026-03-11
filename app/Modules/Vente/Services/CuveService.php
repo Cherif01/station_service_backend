@@ -12,7 +12,6 @@ use Exception;
 
 class CuveService
 {
-
     /**
      * =========================
      * LISTE DES CUVES
@@ -22,7 +21,7 @@ class CuveService
     {
         try {
 
-            $produits = Cuve::visible()
+            $produits = Cuve::query()
                 ->orderBy('libelle')
                 ->get();
 
@@ -41,7 +40,6 @@ class CuveService
         }
     }
 
-
     /**
      * =========================
      * DÉTAIL CUVE
@@ -51,7 +49,7 @@ class CuveService
     {
         try {
 
-            $produit = Cuve::visible()->findOrFail($id);
+            $produit = Cuve::findOrFail($id);
 
             return response()->json([
                 'status' => 200,
@@ -68,7 +66,6 @@ class CuveService
         }
     }
 
-
     /**
      * =========================
      * CRÉATION CUVE
@@ -77,13 +74,6 @@ class CuveService
     public function store(array $data)
     {
         try {
-
-            if (
-                array_key_exists('qt_initial', $data)
-                && ! array_key_exists('qt_actuelle', $data)
-            ) {
-                $data['qt_actuelle'] = $data['qt_initial'];
-            }
 
             $produit = Cuve::create($data);
 
@@ -103,7 +93,6 @@ class CuveService
         }
     }
 
-
     /**
      * =========================
      * MODIFICATION CUVE
@@ -113,7 +102,7 @@ class CuveService
     {
         try {
 
-            $produit = Cuve::visible()->findOrFail($id);
+            $produit = Cuve::findOrFail($id);
             $produit->update($data);
 
             return response()->json([
@@ -132,7 +121,6 @@ class CuveService
         }
     }
 
-
     /**
      * =========================
      * SUPPRESSION CUVE
@@ -142,7 +130,7 @@ class CuveService
     {
         try {
 
-            $produit = Cuve::visible()->findOrFail($id);
+            $produit = Cuve::findOrFail($id);
             $produit->delete();
 
             return response()->json([
@@ -160,7 +148,6 @@ class CuveService
         }
     }
 
-
     /**
      * =========================
      * CALCUL STOCK PAR CUVE
@@ -168,10 +155,7 @@ class CuveService
      */
     public function calculerParCuve(int $idCuve): array
     {
-
-        $cuve = Cuve::visible()
-            ->with('station:id,libelle')
-            ->find($idCuve);
+        $cuve = Cuve::find($idCuve);
 
         if (! $cuve) {
             return [];
@@ -186,13 +170,11 @@ class CuveService
             ? Carbon::parse($lastDate)->toDateString()
             : Carbon::today()->toDateString();
 
-
         $stockMatin = JaugeageCuve::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)
             ->orderBy('created_at')
             ->value('volume_mesure') ?? 0;
-
 
         $entrees = ApprovisionnementCuve::visible()
             ->where('id_cuve', $idCuve)
@@ -200,22 +182,18 @@ class CuveService
             ->where('type_appro', 'approvisionnement')
             ->sum('qte_appro');
 
-
         $retourCuve = ApprovisionnementCuve::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)
             ->where('type_appro', 'retour_cuve')
             ->sum('qte_appro');
 
-
         $sorties = LigneVente::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)
             ->sum('qte_vendu');
 
-
         $stockTheorique = $stockMatin + $entrees + $retourCuve - $sorties;
-
 
         $stockPhysique = JaugeageCuve::visible()
             ->where('id_cuve', $idCuve)
@@ -223,22 +201,15 @@ class CuveService
             ->orderByDesc('created_at')
             ->value('volume_mesure') ?? 0;
 
-
         $ecart = $stockPhysique - $stockTheorique;
 
-
         return [
-
             'date' => $date,
-
-            'station' => [
-                'id'      => $cuve->station?->id,
-                'libelle' => $cuve->station?->libelle,
-            ],
 
             'cuve' => [
                 'id'      => $cuve->id,
                 'libelle' => $cuve->libelle,
+                'pu_vente'=> (float) $cuve->pu_vente,
             ],
 
             'stock_matin'     => (float) $stockMatin,
@@ -248,10 +219,8 @@ class CuveService
             'stock_theorique' => (float) $stockTheorique,
             'stock_physique'  => (float) $stockPhysique,
             'ecart'           => (float) $ecart,
-
         ];
     }
-
 
     /**
      * =========================
@@ -260,12 +229,9 @@ class CuveService
      */
     public function calculerToutesCuves()
     {
-
         $data = [];
 
-        $cuves = Cuve::visible()
-            ->where('status', true)
-            ->with('station:id,libelle')
+        $cuves = Cuve::query()
             ->orderBy('libelle')
             ->get();
 
@@ -283,21 +249,15 @@ class CuveService
             $ecart = $stockPhysique - $stockTheorique;
 
             $data[] = [
-
-                'station' => [
-                    'id'      => $cuve->station?->id,
-                    'libelle' => $cuve->station?->libelle,
-                ],
-
                 'cuve' => [
-                    'id'      => $cuve->id,
-                    'libelle' => $cuve->libelle,
+                    'id'       => $cuve->id,
+                    'libelle'  => $cuve->libelle,
+                    'pu_vente' => (float) $cuve->pu_vente,
                 ],
 
                 'stock_theorique' => (float) $stockTheorique,
                 'stock_physique'  => (float) $stockPhysique,
                 'ecart'           => (float) $ecart,
-
             ];
         }
 
@@ -307,7 +267,6 @@ class CuveService
         ]);
     }
 
-
     /**
      * =========================
      * STOCK ENTRE DEUX DATES
@@ -315,15 +274,12 @@ class CuveService
      */
     public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
     {
-
         $data = [];
 
         $start = Carbon::parse($dateDebut)->startOfDay();
         $end   = Carbon::parse($dateFin)->endOfDay();
 
-        $cuves = Cuve::visible()
-            ->where('status', true)
-            ->with('station:id,libelle')
+        $cuves = Cuve::query()
             ->orderBy('libelle')
             ->get();
 
@@ -343,17 +299,12 @@ class CuveService
             $ecart = $stockPhysique - $stockTheorique;
 
             $data[] = [
-
                 'date' => $start->toDateString() . ' → ' . $end->toDateString(),
 
-                'station' => [
-                    'id'      => $cuve->station?->id,
-                    'libelle' => $cuve->station?->libelle,
-                ],
-
                 'cuve' => [
-                    'id'      => $cuve->id,
-                    'libelle' => $cuve->libelle,
+                    'id'       => $cuve->id,
+                    'libelle'  => $cuve->libelle,
+                    'pu_vente' => (float) $cuve->pu_vente,
                 ],
 
                 'stock_theorique' => (float) $stockTheorique,
