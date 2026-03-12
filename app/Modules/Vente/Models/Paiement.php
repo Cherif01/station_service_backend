@@ -3,6 +3,7 @@
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
+use App\Modules\Caisse\Models\Compte;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ class Paiement extends Model
 
     protected $fillable = [
         'id_creance',
+        'id_compte',
         'montant_payer',
         'mode_paiement',
         'created_by',
@@ -73,6 +75,11 @@ class Paiement extends Model
     public function creance(): BelongsTo
     {
         return $this->belongsTo(Creance::class, 'id_creance');
+    }
+
+    public function compte(): BelongsTo
+    {
+        return $this->belongsTo(Compte::class, 'id_compte');
     }
 
     public function createdBy(): BelongsTo

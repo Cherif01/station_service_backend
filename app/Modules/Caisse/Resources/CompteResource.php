@@ -33,7 +33,6 @@ class CompteResource extends JsonResource
                     'id'      => $this->station->id,
                     'libelle' => $this->station->libelle,
 
-                    // 🔹 Dernier gérant de la station
                     'dernier_gerant' => $gerant ? [
                         'name'      => $gerant->name,
                         'email'     => $gerant->email,
@@ -52,8 +51,8 @@ class CompteResource extends JsonResource
             // =============================================
             // 🔹 AUDIT
             // =============================================
-            'created_by' => $this->createdBy?->name,
-            'modify_by'  => $this->modifiedBy?->name,
+            'created_by' => $this->whenLoaded('createdBy', fn () => $this->createdBy?->name),
+            'modify_by'  => $this->whenLoaded('modifiedBy', fn () => $this->modifiedBy?->name),
 
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),

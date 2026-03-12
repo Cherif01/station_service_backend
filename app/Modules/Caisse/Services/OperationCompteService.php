@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Caisse\Services;
 
 use App\Modules\Caisse\Models\Compte;
@@ -11,117 +12,97 @@ use App\Modules\Vente\Models\LigneVente;
 use App\Modules\Vente\Models\Paiement;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Mockery\CountValidator\Exception;
 use Throwable;
 
 class OperationCompteService
 {
+    public function resumeMensuel(int $annee)
+    {
+        try {
 
+            $data = [];
+            $user = auth()->user();
 
-public function resumeMensuel(int $annee)
-{
-    try {
+            for ($mois = 1; $mois <= 12; $mois++) {
 
-        $data = [];
+                $start = Carbon::create($annee, $mois, 1)->startOfMonth();
+                $end   = Carbon::create($annee, $mois, 1)->endOfMonth();
 
-        $user = auth()->user();
+                /**
+                 * =========================
+                 * VENTES DIRECTES
+                 * =========================
+                 */
+                $ventesQuery = LigneVente::query()
+                    ->where('status', true)
+                    ->whereBetween('created_at', [$start, $end]);
 
-        for ($mois = 1; $mois <= 12; $mois++) {
+                /**
+                 * =========================
+                 * PAIEMENTS CRÉANCES
+                 * =========================
+                 */
+                $creancesQuery = Paiement::query()
+                    ->whereBetween('created_at', [$start, $end]);
 
-            $start = Carbon::create($annee, $mois, 1)->startOfMonth();
-            $end   = Carbon::create($annee, $mois, 1)->endOfMonth();
+                /**
+                 * =========================
+                 * CHARGES
+                 * =========================
+                 */
+                $chargesQuery = OperationCharge::query()
+                    ->whereBetween('created_at', [$start, $end]);
 
-            /**
-             * =========================
-             * VENTES DIRECTES
-             * =========================
-             */
-            $ventesQuery = LigneVente::query()
-                ->where('status', true)
-                ->whereBetween('created_at', [$start, $end]);
+                /**
+                 * =========================
+                 * FILTRAGE STATION
+                 * =========================
+                 */
+                if ($user->role !== 'super_admin') {
 
-            /**
-             * =========================
-             * PAIEMENTS CREANCES
-             * =========================
-             */
-            $creancesQuery = Paiement::query()
-                ->whereBetween('created_at', [$start, $end]);
+                    $stationId = request()->attributes->get('station_active_id');
 
-            /**
-             * =========================
-             * CHARGES
-             * =========================
-             */
-            $chargesQuery = OperationCharge::query()
-                ->whereBetween('created_at', [$start, $end]);
+                    $ventesQuery->where('id_station', $stationId);
 
-            /**
-             * =========================
-             * FILTRAGE STATION
-             * =========================
-             */
-            if ($user->role !== 'super_admin') {
+                    // Paiement → Creance → id_station
+                    $creancesQuery->whereHas('creance', function ($q) use ($stationId) {
+                        $q->where('id_station', $stationId);
+                    });
 
-                $stationId = request()->attributes->get('station_active_id');
+                    // OperationCharge n'a plus id_station (géré par super_admin)
+                    // les charges ne sont pas filtrées par station
+                }
 
-                $ventesQuery->where('id_station', $stationId);
-                $creancesQuery->where('id_station', $stationId);
-                $chargesQuery->where('id_station', $stationId);
+                $ventesDirectes    = $ventesQuery->sum('montant');
+                $paiementsCreances = $creancesQuery->sum('montant_payer');
+                $totalCharges      = $chargesQuery->sum('montant');
+                $totalVentes       = $ventesDirectes + $paiementsCreances;
+                $benefice          = $totalVentes - $totalCharges;
+
+                $data[] = [
+                    'mois'               => $start->translatedFormat('F'),
+                    'ventes_directes'    => (float) $ventesDirectes,
+                    'paiements_creances' => (float) $paiementsCreances,
+                    'total_ventes'       => (float) $totalVentes,
+                    'total_depenses'     => (float) $totalCharges,
+                    'benefice'           => (float) $benefice,
+                ];
             }
 
-            $ventesDirectes = $ventesQuery->sum('montant');
+            return response()->json([
+                'status' => 200,
+                'data'   => $data,
+            ]);
 
-            $paiementsCreances = $creancesQuery->sum('montant_payer');
+        } catch (Throwable $e) {
 
-            $totalCharges = $chargesQuery->sum('montant');
-
-            /**
-             * =========================
-             * TOTAL VENTES
-             * =========================
-             */
-            $totalVentes = $ventesDirectes + $paiementsCreances;
-
-            /**
-             * =========================
-             * BENEFICE
-             * =========================
-             */
-            $benefice = $totalVentes - $totalCharges;
-
-            $data[] = [
-
-                'mois'               => $start->translatedFormat('F'),
-
-                'ventes_directes'    => (float) $ventesDirectes,
-
-                'paiements_creances' => (float) $paiementsCreances,
-
-                'total_ventes'       => (float) $totalVentes,
-
-                'total_depenses'     => (float) $totalCharges,
-
-                'benefice'           => (float) $benefice,
-            ];
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors du calcul du résumé mensuel.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'status' => 200,
-            'data'   => $data,
-        ]);
-
-    } catch (Exception $e) {
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors du calcul du résumé mensuel.',
-            'error'   => $e->getMessage(),
-        ], 500);
     }
-}
-
-
 
     public function getAll()
     {
@@ -131,11 +112,7 @@ public function resumeMensuel(int $annee)
                 ->whereDoesntHave('typeOperation', function ($q) {
                     $q->where('nature', 2);
                 })
-                ->with([
-                    'typeOperation',
-                    'compte.station',
-                    'createdBy',
-                ])
+                ->with(['typeOperation', 'compte.station', 'createdBy'])
                 ->orderByDesc('created_at')
                 ->get();
 
@@ -152,8 +129,7 @@ public function resumeMensuel(int $annee)
             ], 500);
         }
     }
-/* la liste des operations orndinaires par date
-*/
+
     public function getAllByPeriode(array $data)
     {
         try {
@@ -165,13 +141,8 @@ public function resumeMensuel(int $annee)
                 ->whereDoesntHave('typeOperation', function ($q) {
                     $q->where('nature', 2);
                 })
-                ->with([
-                    'typeOperation',
-                    'compte.station',
-                    'createdBy',
-                ]);
+                ->with(['typeOperation', 'compte.station', 'createdBy']);
 
-            // 🔹 Filtre par dates si fournies
             if ($dateDebut && $dateFin) {
                 $query->whereBetween('created_at', [
                     $dateDebut . ' 00:00:00',
@@ -179,13 +150,11 @@ public function resumeMensuel(int $annee)
                 ]);
             }
 
-            $operations = $query
-                ->orderByDesc('created_at')
-                ->get();
-
             return response()->json([
                 'status' => 200,
-                'data'   => OperationCompteResource::collection($operations),
+                'data'   => OperationCompteResource::collection(
+                    $query->orderByDesc('created_at')->get()
+                ),
             ], 200);
 
         } catch (Throwable $e) {
@@ -202,14 +171,8 @@ public function resumeMensuel(int $annee)
         try {
 
             $operations = OperationCompte::visible()
-                ->whereHas('typeOperation', fn($q) => $q->where('nature', 2))
-                ->with([
-                    'typeOperation',
-                    'source.station',
-                    'destination.station',
-                    'createdBy',
-                    'modifiedBy',
-                ])
+                ->whereHas('typeOperation', fn ($q) => $q->where('nature', 2))
+                ->with(['typeOperation', 'source.station', 'destination.station', 'createdBy', 'modifiedBy'])
                 ->orderByDesc('created_at')
                 ->get();
 
@@ -226,8 +189,6 @@ public function resumeMensuel(int $annee)
             ], 500);
         }
     }
-    /* la liste des operations inter comptes entre deux dates 
-  */
 
     public function getAllTransfertsByPeriode(array $data)
     {
@@ -237,16 +198,9 @@ public function resumeMensuel(int $annee)
             $dateFin   = $data['date_fin'] ?? null;
 
             $query = OperationCompte::visible()
-                ->whereHas('typeOperation', fn($q) => $q->where('nature', 2))
-                ->with([
-                    'typeOperation',
-                    'source.station',
-                    'destination.station',
-                    'createdBy',
-                    'modifiedBy',
-                ]);
+                ->whereHas('typeOperation', fn ($q) => $q->where('nature', 2))
+                ->with(['typeOperation', 'source.station', 'destination.station', 'createdBy', 'modifiedBy']);
 
-            // 🔹 Filtre par période
             if ($dateDebut && $dateFin) {
                 $query->whereBetween('created_at', [
                     $dateDebut . ' 00:00:00',
@@ -254,13 +208,11 @@ public function resumeMensuel(int $annee)
                 ]);
             }
 
-            $operations = $query
-                ->orderByDesc('created_at')
-                ->get();
-
             return response()->json([
                 'status' => 200,
-                'data'   => OperationTransfertResource::collection($operations),
+                'data'   => OperationTransfertResource::collection(
+                    $query->orderByDesc('created_at')->get()
+                ),
             ], 200);
 
         } catch (Throwable $e) {
@@ -277,13 +229,7 @@ public function resumeMensuel(int $annee)
         try {
 
             $operation = OperationCompte::visible()
-                ->with([
-                    'typeOperation',
-                    'compte.station',
-                    'source.station',
-                    'destination.station',
-                    'createdBy',
-                ])
+                ->with(['typeOperation', 'compte.station', 'source.station', 'destination.station', 'createdBy'])
                 ->findOrFail($id);
 
             return response()->json([
@@ -313,20 +259,23 @@ public function resumeMensuel(int $annee)
             $type   = TypeOperation::find($data['id_type_operation']);
 
             if (! $compte || ! $type) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 404,
-                    'message' => 'Compte ou type d’opération introuvable.',
+                    'message' => 'Compte ou type d\'opération introuvable.',
                 ], 404);
             }
 
             if ($type->nature === 2) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 409,
-                    'message' => 'Utilisez le transfert inter-station. en precisant la source et la destination',
+                    'message' => 'Utilisez le transfert inter-station en précisant la source et la destination.',
                 ], 409);
             }
 
             if ($type->nature === 0 && $data['montant'] > $compte->solde_actuel) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 409,
                     'message' => 'Solde insuffisant.',
@@ -348,11 +297,7 @@ public function resumeMensuel(int $annee)
                 'status'  => 201,
                 'message' => 'Opération enregistrée.',
                 'data'    => new OperationCompteResource(
-                    $operation->load([
-                        'typeOperation',
-                        'compte.station',
-                        'createdBy',
-                    ])
+                    $operation->load(['typeOperation', 'compte.station', 'createdBy'])
                 ),
             ], 201);
 
@@ -362,7 +307,8 @@ public function resumeMensuel(int $annee)
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de l’opération.',
+                'message' => 'Erreur lors de l\'opération.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -370,79 +316,6 @@ public function resumeMensuel(int $annee)
     /**
      * TRANSFERT INTER-STATION
      */
-    // public function transfer(array $data)
-    // {
-    //     DB::beginTransaction();
-
-    //     try {
-
-    //         $source = Compte::lockForUpdate()->find($data['id_source']);
-    //         $dest   = Compte::lockForUpdate()->find($data['id_destination']);
-
-    //         if (! $source || ! $dest) {
-    //             return response()->json([
-    //                 'status'  => 404,
-    //                 'message' => 'Compte source ou destination introuvable.',
-    //             ], 404);
-    //         }
-
-    //         if ($data['montant'] > $source->solde_actuel) {
-    //             return response()->json([
-    //                 'status'  => 409,
-    //                 'message' => 'Solde insuffisant.',
-    //             ], 409);
-    //         }
-
-    //         $type = TypeOperation::where('nature', 2)->first();
-
-    //         if (! $type) {
-    //             return response()->json([
-    //                 'status'  => 500,
-    //                 'message' => 'Type transfert non configuré.',
-    //             ], 500);
-    //         }
-
-    //         $opSource = OperationCompte::create([
-    //             'id_compte'         => $source->id,
-    //             'id_source'         => $source->id,
-    //             'id_destination'    => $dest->id,
-    //             'id_type_operation' => $type->id,
-    //             'montant'           => $data['montant'],
-    //             'reference'         => $data['reference'] ?? null,
-    //             'commentaire'       => $data['commentaire'] ?? null,
-    //             'status'            => 'en_attente',
-    //         ]);
-
-    //         OperationCompte::create([
-    //             'id_compte'         => $dest->id,
-    //             'id_source'         => $source->id,
-    //             'id_destination'    => $dest->id,
-    //             'id_type_operation' => $type->id,
-    //             'montant'           => $data['montant'],
-    //             'reference'         => $opSource->reference,
-    //             'commentaire'       => $data['commentaire'] ?? null,
-    //             'status'            => 'en_attente',
-    //         ]);
-
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'status'    => 201,
-    //             'message'   => 'Transfert envoyé.',
-    //             'reference' => $opSource->reference,
-    //         ], 201);
-
-    //     } catch (Throwable $e) {
-
-    //         DB::rollBack();
-
-    //         return response()->json([
-    //             'status'  => 500,
-    //             'message' => 'Erreur lors du transfert.',
-    //         ], 500);
-    //     }
-    // }
-
     public function transfer(array $data)
     {
         DB::beginTransaction();
@@ -453,6 +326,7 @@ public function resumeMensuel(int $annee)
             $destination = Compte::lockForUpdate()->find($data['id_destination']);
 
             if (! $source || ! $destination) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 404,
                     'message' => 'Compte source ou destination introuvable.',
@@ -460,6 +334,7 @@ public function resumeMensuel(int $annee)
             }
 
             if ($source->id === $destination->id) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 409,
                     'message' => 'Un transfert vers le même compte est interdit.',
@@ -469,14 +344,15 @@ public function resumeMensuel(int $annee)
             $montant = (float) $data['montant'];
 
             if ($montant <= 0) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 409,
                     'message' => 'Montant invalide.',
                 ], 409);
             }
 
-            // 🔒 contrôle SOLDE AVANT transfert
             if ($montant > $source->solde_actuel) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 409,
                     'message' => 'Solde insuffisant sur le compte source.',
@@ -493,7 +369,6 @@ public function resumeMensuel(int $annee)
                 'montant'           => $montant,
                 'commentaire'       => $data['commentaire'] ?? null,
                 'status'            => 'en_attente',
-                // reference générée automatiquement par le model
             ]);
 
             DB::commit();
@@ -504,55 +379,18 @@ public function resumeMensuel(int $annee)
                 'reference' => $operation->reference,
             ], 201);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
 
             DB::rollBack();
 
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors du transfert.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
 
-    // public function confirm(string $reference)
-    // {
-    //     DB::beginTransaction();
-
-    //     try {
-
-    //         $operations = OperationCompte::where('reference', $reference)
-    //             ->lockForUpdate()
-    //             ->get();
-
-    //         if ($operations->count() !== 2) {
-    //             return response()->json([
-    //                 'status'  => 404,
-    //                 'message' => 'Transfert introuvable.',
-    //             ], 404);
-    //         }
-
-    //         foreach ($operations as $op) {
-    //             $op->update(['status' => 'effectif']);
-    //         }
-
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'status'  => 200,
-    //             'message' => 'Transfert confirmé.',
-    //         ], 200);
-
-    //     } catch (Throwable $e) {
-
-    //         DB::rollBack();
-
-    //         return response()->json([
-    //             'status'  => 500,
-    //             'message' => 'Erreur lors de la confirmation.',
-    //         ], 500);
-    //     }
-    // }
     public function confirm(string $reference)
     {
         DB::beginTransaction();
@@ -565,14 +403,15 @@ public function resumeMensuel(int $annee)
                 ->first();
 
             if (! $op) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 404,
                     'message' => 'Transfert introuvable ou déjà traité.',
                 ], 404);
             }
 
-            // dernier contrôle solde
             if ($op->montant > $op->source->solde_actuel) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 409,
                     'message' => 'Solde insuffisant au moment de la confirmation.',
@@ -588,13 +427,14 @@ public function resumeMensuel(int $annee)
                 'message' => 'Transfert confirmé avec succès.',
             ]);
 
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
 
             DB::rollBack();
 
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la confirmation.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -610,6 +450,7 @@ public function resumeMensuel(int $annee)
                 ->get();
 
             if ($operations->isEmpty()) {
+                DB::rollBack();
                 return response()->json([
                     'status'  => 404,
                     'message' => 'Transfert introuvable.',
@@ -633,7 +474,8 @@ public function resumeMensuel(int $annee)
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de l’annulation.',
+                'message' => 'Erreur lors de l\'annulation.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }

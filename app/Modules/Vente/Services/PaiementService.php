@@ -16,7 +16,7 @@ class PaiementService
     public function index()
     {
         $paiements = Paiement::visible()
-            ->with(['creance', 'creance.client', 'createdBy'])
+            ->with(['creance', 'creance.client', 'compte', 'createdBy'])
             ->orderByDesc('id')
             ->get();
 
@@ -34,7 +34,7 @@ class PaiementService
     public function getOne(int $id)
     {
         $paiement = Paiement::visible()
-            ->with(['creance', 'creance.client', 'createdBy'])
+            ->with(['creance', 'creance.client', 'compte', 'createdBy'])
             ->find($id);
 
         if (! $paiement) {
@@ -126,7 +126,7 @@ class PaiementService
                 'status'  => 200,
                 'message' => 'Paiement enregistré avec succès.',
                 'data'    => new PaiementResource(
-                    $paiement->load(['creance', 'creance.client', 'createdBy'])
+                    $paiement->load(['creance', 'creance.client', 'compte', 'createdBy'])
                 ),
             ], 200);
 
@@ -173,7 +173,7 @@ class PaiementService
                 'status'  => 200,
                 'message' => 'Paiement mis à jour.',
                 'data'    => new PaiementResource(
-                    $paiement->load(['creance', 'creance.client', 'createdBy'])
+                    $paiement->load(['creance', 'creance.client', 'compte', 'createdBy'])
                 ),
             ], 200);
 

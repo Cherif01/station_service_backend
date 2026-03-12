@@ -17,6 +17,7 @@ class StorePaiementRequest extends FormRequest
     {
         return [
             'id_creance'    => 'required|exists:creances,id',
+            'id_compte'     => 'required|exists:comptes,id',
             'montant_payer' => 'required|numeric|min:0.01',
             'mode_paiement' => 'nullable|string|max:50',
         ];

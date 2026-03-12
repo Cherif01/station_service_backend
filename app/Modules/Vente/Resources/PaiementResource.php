@@ -23,6 +23,12 @@ class PaiementResource extends JsonResource
                 ] : null,
             ] : null),
 
+            // compte crédité
+            'compte' => $this->whenLoaded('compte', fn () => $this->compte ? [
+                'id'      => $this->compte->id,
+                'libelle' => $this->compte->libelle,
+            ] : null),
+
             'created_by' => $this->whenLoaded(
                 'createdBy',
                 fn () => $this->createdBy?->name
