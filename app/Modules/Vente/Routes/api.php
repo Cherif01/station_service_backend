@@ -24,7 +24,7 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
     //     [CuveController::class, 'calculerStockJournalierToutesCuves']
     // );
 
-    Route::get('/carburant/stock-journalier', [CuveController::class, 'stockJournalier']);
+    Route::get('/carburant/stock-journalier', [CuveController::class, 'stockEntreDates']);
 
 
 
