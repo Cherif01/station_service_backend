@@ -26,6 +26,8 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
 
     Route::get('/carburant/stock-journalier', [CuveController::class, 'stockEntreDates']);
 
+    Route::get('/journalier/carburant', [LigneVenteController::class, 'venteJournaliere']);
+
 
 
 

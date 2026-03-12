@@ -1,13 +1,11 @@
 <?php
-
 namespace App\Modules\Vente\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Vente\Requests\LigneVenteRequest;
 use App\Modules\Vente\Services\LigneVenteService;
 use Illuminate\Http\JsonResponse;
- use Illuminate\Http\Request;
-
+use Illuminate\Http\Request;
 
 class LigneVenteController extends Controller
 {
@@ -22,7 +20,7 @@ class LigneVenteController extends Controller
     {
         return $this->service->getAll();
     }
-     public function index1(): JsonResponse
+    public function index1(): JsonResponse
     {
         return $this->service->getAll1();
     }
@@ -38,16 +36,15 @@ class LigneVenteController extends Controller
     /**
      * Création d'une vente
      */
-  
 
-public function store(Request $request): JsonResponse
-{
-    $data = $request->validate([
-        'id_station' => ['required', 'exists:stations,id'],
-    ]);
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'id_station' => ['required', 'exists:stations,id'],
+        ]);
 
-    return $this->service->store($data);
-}
+        return $this->service->store($data);
+    }
 
     /**
      * Mise à jour d'une vente
@@ -64,4 +61,16 @@ public function store(Request $request): JsonResponse
     {
         return $this->service->delete($id);
     }
+
+    /**
+     * GET /lignes-vente/releve-journalier?date_debut=2026-03-01&date_fin=2026-03-12
+     */
+    public function venteJournaliere(Request $request): JsonResponse
+    {
+        return $this->service->venteJournaliere(
+            $request->query('date_debut'),
+            $request->query('date_fin')
+        );
+    }
+
 }

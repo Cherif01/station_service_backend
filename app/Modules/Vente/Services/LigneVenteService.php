@@ -11,6 +11,7 @@ use App\Modules\Vente\Models\LigneVente;
 use App\Modules\Vente\Models\ValidationVente;
 use App\Modules\Vente\Resources\LigneVenteCollection;
 use App\Modules\Vente\Resources\LigneVenteResource;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -735,4 +736,70 @@ class LigneVenteService
             ], 500);
         }
     }
+
+    /**
+ * =========================
+ * VENTE JOURNALIÈRE PAR POMPE
+ * (relevé jour par jour entre deux dates)
+ * =========================
+ */
+public function venteJournaliere(?string $dateDebut = null, ?string $dateFin = null): JsonResponse
+{
+    try {
+
+        $debut = $dateDebut
+            ? Carbon::parse($dateDebut)->startOfDay()
+            : Carbon::today()->startOfDay();
+
+        $fin = $dateFin
+            ? Carbon::parse($dateFin)->endOfDay()
+            : Carbon::today()->endOfDay();
+
+        $data    = [];
+        $current = $debut->copy();
+
+        while ($current->lte($fin)) {
+
+            $date = $current->toDateString();
+
+            $lignes = LigneVente::visible()
+                ->with([
+                    'affectation.pompe.station',
+                    'affectation.user',
+                    'cuve',
+                    'createdBy',
+                    'modifiedBy',
+                ])
+                ->whereDate('created_at', $date)
+                ->where('status', true)
+                ->get();
+
+            $data[] = [
+                'date'          => $date,
+                'total_volume'  => (float) $lignes->sum('qte_vendu'),
+                'total_montant' => (float) $lignes->sum(fn($l) => $l->qte_vendu * $l->prix_unitaire),
+                'lignes'        => (new LigneVenteCollection($lignes))->toArray(request()),
+            ];
+
+            $current->addDay();
+        }
+
+        return response()->json([
+            'status'     => 200,
+            'date_debut' => $debut->toDateString(),
+            'date_fin'   => $fin->toDateString(),
+            'data'       => $data,
+        ]);
+
+    } catch (\Throwable $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors du relevé journalier.',
+            'error'   => $e->getMessage(),
+        ], 500);
+    }
+}
+
+
 }
