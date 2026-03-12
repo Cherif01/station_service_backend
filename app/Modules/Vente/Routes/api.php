@@ -5,6 +5,7 @@ use App\Modules\Vente\Controllers\ClientController;
 use App\Modules\Vente\Controllers\CreanceController;
 use App\Modules\Vente\Controllers\CuveController;
 use App\Modules\Vente\Controllers\InitVenteController;
+use App\Modules\Vente\Controllers\JaugeageController;
 use App\Modules\Vente\Controllers\LigneVenteController;
 use App\Modules\Vente\Controllers\PaiementController;
 use App\Modules\Vente\Controllers\PerteCuveController;
@@ -24,15 +25,6 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
 
     Route::get('/journalier/carburant', [LigneVenteController::class, 'venteJournaliere']);
 
-
-
-
-      Route::get(
-        '/statistiques/cuves/periode',
-        [CuveController::class, 'calculerToutesCuvesEntreDates']
-    );
-    
-   
    
     Route::get(
         'releve-pompes',
@@ -47,20 +39,16 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
     );
 
     Route::apiResource('appro', ApprovisionnementCuveController::class);
-    Route::apiResource('validation', ValidationVenteController::class);
-    Route::apiResource('mesure-cuves', VenteLitreController::class);
+
+    Route::apiResource('mesure-cuves', JaugeageController::class)
+        ->only(['index', 'show', 'store', 'destroy']);
     Route::apiResource('perte-cuves', PerteCuveController::class);
-    Route::apiResource('produits', ProduitController1::class);
-    Route::apiResource('services', ServiceController::class);
+  
     Route::apiResource('paiements', PaiementController::class);
     Route::apiResource('clients', ClientController::class);
      Route::apiResource('creances', CreanceController::class);
-    Route::apiResource('init-ventes', InitVenteController::class);
+
     Route::apiResource('initiation', LigneVenteController::class);
-  Route::apiResource(
-    'vente-produits-services',
-    VenteProduitServiceController::class
-);
 
 
 

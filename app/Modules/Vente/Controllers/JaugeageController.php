@@ -3,19 +3,19 @@
 namespace App\Modules\Vente\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Vente\Requests\StoreVenteLitreRequest;
-use App\Modules\Vente\Services\VenteLitreService;
+use App\Modules\Vente\Requests\StoreJaugeageRequest;
+use App\Modules\Vente\Services\JaugeageCuveService;
 use Illuminate\Http\JsonResponse;
 
-class VenteLitreController extends Controller
+class JaugeageController extends Controller
 {
     public function __construct(
-        private readonly VenteLitreService $service
+        private readonly JaugeageCuveService $service
     ) {}
 
     /**
      * =========================
-     * LISTE DES VENTES
+     * LISTE DES JAUGEAGES
      * =========================
      */
     public function index(): JsonResponse
@@ -25,7 +25,7 @@ class VenteLitreController extends Controller
 
     /**
      * =========================
-     * DÉTAIL D’UNE VENTE
+     * DÉTAIL
      * =========================
      */
     public function show(int $id): JsonResponse
@@ -35,10 +35,10 @@ class VenteLitreController extends Controller
 
     /**
      * =========================
-     * CRÉATION D’UNE VENTE
+     * CRÉATION
      * =========================
      */
-    public function store(StoreVenteLitreRequest $request): JsonResponse
+    public function store(StoreJaugeageRequest $request): JsonResponse
     {
         return $this->service->store($request->validated());
     }
