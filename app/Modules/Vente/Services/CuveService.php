@@ -326,13 +326,23 @@ class CuveService
  * (toutes les cuves pour une date)
  * =========================
  */
-public function calculerStockJournalier(?string $date = null)
+/**
+ * =========================
+ * STOCK ENTRE DEUX DATES
+ * (toutes les cuves)
+ * =========================
+ */
+public function calculerStockEntreDates(?string $dateDebut = null, ?string $dateFin = null)
 {
     try {
 
-        $date = $date
-            ? Carbon::parse($date)->toDateString()
-            : Carbon::today()->toDateString();
+        $debut = $dateDebut
+            ? Carbon::parse($dateDebut)->startOfDay()
+            : Carbon::today()->startOfDay();
+
+        $fin = $dateFin
+            ? Carbon::parse($dateFin)->endOfDay()
+            : Carbon::today()->endOfDay();
 
         $cuves = Cuve::query()
             ->orderBy('libelle')
@@ -342,68 +352,42 @@ public function calculerStockJournalier(?string $date = null)
 
         foreach ($cuves as $cuve) {
 
-            /**
-             * ===============================
-             * STOCK DÉBUT
-             * premier jaugeage du jour
-             * ===============================
-             */
             $stockDebut = JaugeageCuve::visible()
                 ->where('id_cuve', $cuve->id)
-                ->whereDate('created_at', $date)
+                ->whereBetween('created_at', [$debut, $fin])
                 ->orderBy('created_at')
                 ->value('volume_mesure') ?? 0;
 
-            /**
-             * ===============================
-             * ENTRÉES (livraisons)
-             * ===============================
-             */
             $entrees = ApprovisionnementCuve::visible()
                 ->where('id_cuve', $cuve->id)
-                ->whereDate('created_at', $date)
+                ->whereBetween('created_at', [$debut, $fin])
                 ->where('type_appro', 'approvisionnement')
                 ->sum('qte_appro');
 
-            /**
-             * ===============================
-             * RETOUR CUVE (depuis LigneVente)
-             * ===============================
-             */
             $retourCuve = LigneVente::visible()
                 ->where('id_cuve', $cuve->id)
-                ->whereDate('created_at', $date)
+                ->whereBetween('created_at', [$debut, $fin])
                 ->where('status', true)
                 ->sum('retour_cuve');
 
-            /**
-             * ===============================
-             * SORTIES — litres vendus nets
-             * ===============================
-             */
             $sorties = LigneVente::visible()
                 ->where('id_cuve', $cuve->id)
-                ->whereDate('created_at', $date)
+                ->whereBetween('created_at', [$debut, $fin])
                 ->where('status', true)
                 ->sum('qte_vendu');
 
-            /**
-             * ===============================
-             * CALCULS
-             * ===============================
-             */
             $stockFinTheorique = $stockDebut + $entrees + $retourCuve - $sorties;
 
             $stockJauge = JaugeageCuve::visible()
                 ->where('id_cuve', $cuve->id)
-                ->whereDate('created_at', $date)
+                ->whereBetween('created_at', [$debut, $fin])
                 ->orderByDesc('created_at')
                 ->value('volume_mesure') ?? 0;
 
             $ecart = $stockJauge - $stockFinTheorique;
 
             $data[] = [
-                'date' => $date,
+                'periode' => $debut->toDateString() . ' → ' . $fin->toDateString(),
 
                 'carburant' => [
                     'id'       => $cuve->id,
@@ -422,9 +406,10 @@ public function calculerStockJournalier(?string $date = null)
         }
 
         return response()->json([
-            'status' => 200,
-            'date'   => $date,
-            'data'   => $data,
+            'status'      => 200,
+            'date_debut'  => $debut->toDateString(),
+            'date_fin'    => $fin->toDateString(),
+            'data'        => $data,
         ]);
 
     } catch (Exception $e) {

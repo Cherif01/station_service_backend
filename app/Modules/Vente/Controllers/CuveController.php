@@ -90,13 +90,17 @@ class CuveController extends Controller
 
 
 
-     /**
-     * Stock journalier de toutes les cuves
-     * GET /cuves/stock-journalier?date=2026-03-12
-     */
-    public function stockJournalier(Request $request): JsonResponse
-    {
-        $date = $request->query('date');
-        return $this->service->calculerStockJournalier($date);
-    }
+   /**
+ * Stock entre deux dates
+ * GET /carburant/stock-periode?date_debut=2026-03-01&date_fin=2026-03-12
+ */
+public function stockEntreDates(Request $request): JsonResponse
+{
+    $dateDebut = $request->query('date_debut');
+    $dateFin   = $request->query('date_fin');
+
+    return $this->service->calculerStockEntreDates($dateDebut, $dateFin);
+}
+
+   
 }
