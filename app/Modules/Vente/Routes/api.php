@@ -19,10 +19,15 @@ use Illuminate\Support\Facades\Route;
 Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente')->group(function () {
    
     //  Route::apiResource('ligne-ventes',LigneVenteController::class);
-    Route::get(
-        'statistiques/cuves/journalier',
-        [CuveController::class, 'calculerStockJournalierToutesCuves']
-    );
+    // Route::get(
+    //     'statistiques/cuves/journalier',
+    //     [CuveController::class, 'calculerStockJournalierToutesCuves']
+    // );
+
+    Route::get('/carburant/stock-journalier', [CuveController::class, 'stockJournalier']);
+
+
+
 
       Route::get(
         '/statistiques/cuves/periode',

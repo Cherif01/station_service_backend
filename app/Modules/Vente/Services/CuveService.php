@@ -227,95 +227,214 @@ class CuveService
      * STOCK DE TOUTES LES CUVES
      * =========================
      */
-    public function calculerToutesCuves()
-    {
-        $data = [];
+    // public function calculerToutesCuves()
+    // {
+    //     $data = [];
 
-        $cuves = Cuve::query()
-            ->orderBy('libelle')
-            ->get();
+    //     $cuves = Cuve::query()
+    //         ->orderBy('libelle')
+    //         ->get();
 
-        foreach ($cuves as $cuve) {
+    //     foreach ($cuves as $cuve) {
 
-            $stockTheorique = LigneVente::visible()
-                ->where('id_cuve', $cuve->id)
-                ->sum('qte_vendu');
+    //         $stockTheorique = LigneVente::visible()
+    //             ->where('id_cuve', $cuve->id)
+    //             ->sum('qte_vendu');
 
-            $stockPhysique = JaugeageCuve::visible()
-                ->where('id_cuve', $cuve->id)
-                ->orderByDesc('created_at')
-                ->value('volume_mesure') ?? 0;
+    //         $stockPhysique = JaugeageCuve::visible()
+    //             ->where('id_cuve', $cuve->id)
+    //             ->orderByDesc('created_at')
+    //             ->value('volume_mesure') ?? 0;
 
-            $ecart = $stockPhysique - $stockTheorique;
+    //         $ecart = $stockPhysique - $stockTheorique;
 
-            $data[] = [
-                'cuve' => [
-                    'id'       => $cuve->id,
-                    'libelle'  => $cuve->libelle,
-                    'pu_vente' => (float) $cuve->pu_vente,
-                ],
+    //         $data[] = [
+    //             'cuve' => [
+    //                 'id'       => $cuve->id,
+    //                 'libelle'  => $cuve->libelle,
+    //                 'pu_vente' => (float) $cuve->pu_vente,
+    //             ],
 
-                'stock_theorique' => (float) $stockTheorique,
-                'stock_physique'  => (float) $stockPhysique,
-                'ecart'           => (float) $ecart,
-            ];
-        }
+    //             'stock_theorique' => (float) $stockTheorique,
+    //             'stock_physique'  => (float) $stockPhysique,
+    //             'ecart'           => (float) $ecart,
+    //         ];
+    //     }
 
-        return response()->json([
-            'status' => 200,
-            'data'   => $data,
-        ]);
-    }
+    //     return response()->json([
+    //         'status' => 200,
+    //         'data'   => $data,
+    //     ]);
+    // }
+
+    // /**
+    //  * =========================
+    //  * STOCK ENTRE DEUX DATES
+    //  * =========================
+    //  */
+    // public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
+    // {
+    //     $data = [];
+
+    //     $start = Carbon::parse($dateDebut)->startOfDay();
+    //     $end   = Carbon::parse($dateFin)->endOfDay();
+
+    //     $cuves = Cuve::query()
+    //         ->orderBy('libelle')
+    //         ->get();
+
+    //     foreach ($cuves as $cuve) {
+
+    //         $stockTheorique = LigneVente::visible()
+    //             ->where('id_cuve', $cuve->id)
+    //             ->whereBetween('created_at', [$start, $end])
+    //             ->sum('qte_vendu');
+
+    //         $stockPhysique = JaugeageCuve::visible()
+    //             ->where('id_cuve', $cuve->id)
+    //             ->whereBetween('created_at', [$start, $end])
+    //             ->orderByDesc('created_at')
+    //             ->value('volume_mesure') ?? 0;
+
+    //         $ecart = $stockPhysique - $stockTheorique;
+
+    //         $data[] = [
+    //             'date' => $start->toDateString() . ' → ' . $end->toDateString(),
+
+    //             'cuve' => [
+    //                 'id'       => $cuve->id,
+    //                 'libelle'  => $cuve->libelle,
+    //                 'pu_vente' => (float) $cuve->pu_vente,
+    //             ],
+
+    //             'stock_theorique' => (float) $stockTheorique,
+    //             'stock_physique'  => (float) $stockPhysique,
+    //             'ecart'           => (float) $ecart,
+    //         ];
+    //     }
+
+    //     return response()->json([
+    //         'status' => 200,
+    //         'data'   => $data,
+    //     ]);
+    // }
+
 
     /**
-     * =========================
-     * STOCK ENTRE DEUX DATES
-     * =========================
-     */
-    public function calculerToutesCuvesEntreDates(string $dateDebut, string $dateFin)
-    {
-        $data = [];
+ * =========================
+ * STOCK JOURNALIER PAR CUVE
+ * (toutes les cuves pour une date)
+ * =========================
+ */
+public function calculerStockJournalier(?string $date = null)
+{
+    try {
 
-        $start = Carbon::parse($dateDebut)->startOfDay();
-        $end   = Carbon::parse($dateFin)->endOfDay();
+        $date = $date
+            ? Carbon::parse($date)->toDateString()
+            : Carbon::today()->toDateString();
 
         $cuves = Cuve::query()
             ->orderBy('libelle')
             ->get();
 
+        $data = [];
+
         foreach ($cuves as $cuve) {
 
-            $stockTheorique = LigneVente::visible()
+            /**
+             * ===============================
+             * STOCK DÉBUT
+             * premier jaugeage du jour
+             * ===============================
+             */
+            $stockDebut = JaugeageCuve::visible()
                 ->where('id_cuve', $cuve->id)
-                ->whereBetween('created_at', [$start, $end])
+                ->whereDate('created_at', $date)
+                ->orderBy('created_at')
+                ->value('volume_mesure') ?? 0;
+
+            /**
+             * ===============================
+             * ENTRÉES (livraisons)
+             * ===============================
+             */
+            $entrees = ApprovisionnementCuve::visible()
+                ->where('id_cuve', $cuve->id)
+                ->whereDate('created_at', $date)
+                ->where('type_appro', 'approvisionnement')
+                ->sum('qte_appro');
+
+            /**
+             * ===============================
+             * RETOUR CUVE (depuis LigneVente)
+             * ===============================
+             */
+            $retourCuve = LigneVente::visible()
+                ->where('id_cuve', $cuve->id)
+                ->whereDate('created_at', $date)
+                ->where('status', true)
+                ->sum('retour_cuve');
+
+            /**
+             * ===============================
+             * SORTIES — litres vendus nets
+             * ===============================
+             */
+            $sorties = LigneVente::visible()
+                ->where('id_cuve', $cuve->id)
+                ->whereDate('created_at', $date)
+                ->where('status', true)
                 ->sum('qte_vendu');
 
-            $stockPhysique = JaugeageCuve::visible()
+            /**
+             * ===============================
+             * CALCULS
+             * ===============================
+             */
+            $stockFinTheorique = $stockDebut + $entrees + $retourCuve - $sorties;
+
+            $stockJauge = JaugeageCuve::visible()
                 ->where('id_cuve', $cuve->id)
-                ->whereBetween('created_at', [$start, $end])
+                ->whereDate('created_at', $date)
                 ->orderByDesc('created_at')
                 ->value('volume_mesure') ?? 0;
 
-            $ecart = $stockPhysique - $stockTheorique;
+            $ecart = $stockJauge - $stockFinTheorique;
 
             $data[] = [
-                'date' => $start->toDateString() . ' → ' . $end->toDateString(),
+                'date' => $date,
 
-                'cuve' => [
+                'carburant' => [
                     'id'       => $cuve->id,
                     'libelle'  => $cuve->libelle,
                     'pu_vente' => (float) $cuve->pu_vente,
                 ],
 
-                'stock_theorique' => (float) $stockTheorique,
-                'stock_physique'  => (float) $stockPhysique,
+                'stock_debut'     => (float) $stockDebut,
+                'entrees'         => (float) $entrees,
+                'retour_cuve'     => (float) $retourCuve,
+                'sorties'         => (float) $sorties,
+                'stock_theorique' => (float) $stockFinTheorique,
+                'stock_jauge'     => (float) $stockJauge,
                 'ecart'           => (float) $ecart,
             ];
         }
 
         return response()->json([
             'status' => 200,
+            'date'   => $date,
             'data'   => $data,
         ]);
+
+    } catch (Exception $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors du calcul du stock.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
+
 }

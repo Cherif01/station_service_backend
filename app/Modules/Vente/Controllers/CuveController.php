@@ -70,21 +70,33 @@ class CuveController extends Controller
      * 🔹 STOCK JOURNALIER DE TOUTES LES CUVES
      * =================================================
      */
-    public function calculerStockJournalierToutesCuves(): JsonResponse
-    {
-        return $this->service->calculerToutesCuves();
-    }
+    // public function calculerStockJournalierToutesCuves(): JsonResponse
+    // {
+    //     return $this->service->calculerToutesCuves();
+    // }
 
-    /**
-     * =================================================
-     * 🔹 STOCK DES CUVES ENTRE DEUX DATES
-     * =================================================
+    // /**
+    //  * =================================================
+    //  * 🔹 STOCK DES CUVES ENTRE DEUX DATES
+    //  * =================================================
+    //  */
+    // public function calculerToutesCuvesEntreDates(Request $request): JsonResponse
+    // {
+    //     return $this->service->calculerToutesCuvesEntreDates(
+    //         $request->query('date_debut'),
+    //         $request->query('date_fin')
+    //     );
+    // }
+
+
+
+     /**
+     * Stock journalier de toutes les cuves
+     * GET /cuves/stock-journalier?date=2026-03-12
      */
-    public function calculerToutesCuvesEntreDates(Request $request): JsonResponse
+    public function stockJournalier(Request $request): JsonResponse
     {
-        return $this->service->calculerToutesCuvesEntreDates(
-            $request->query('date_debut'),
-            $request->query('date_fin')
-        );
+        $date = $request->query('date');
+        return $this->service->calculerStockJournalier($date);
     }
 }
