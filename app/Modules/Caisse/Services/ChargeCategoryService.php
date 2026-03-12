@@ -9,25 +9,28 @@ use Exception;
 
 class ChargeCategoryService
 {
+    private array $with = ['createdBy', 'modifiedBy'];
+
     public function getAll()
     {
         try {
 
             $items = ChargeCategory::visible()
+                ->with($this->with)
                 ->orderBy('libelle')
                 ->get();
 
             return response()->json([
                 'status' => 200,
-                'data' => new ChargeCategoryCollection($items),
+                'data'   => new ChargeCategoryCollection($items),
             ]);
 
         } catch (Exception $e) {
 
             return response()->json([
-                'status' => 500,
+                'status'  => 500,
                 'message' => 'Erreur lors de la récupération des catégories.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -36,19 +39,21 @@ class ChargeCategoryService
     {
         try {
 
-            $item = ChargeCategory::visible()->findOrFail($id);
+            $item = ChargeCategory::visible()
+                ->with($this->with)
+                ->findOrFail($id);
 
             return response()->json([
                 'status' => 200,
-                'data' => new ChargeCategoryResource($item),
+                'data'   => new ChargeCategoryResource($item),
             ]);
 
         } catch (Exception $e) {
 
             return response()->json([
-                'status' => 404,
+                'status'  => 404,
                 'message' => 'Catégorie introuvable.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 404);
         }
     }
@@ -60,17 +65,17 @@ class ChargeCategoryService
             $item = ChargeCategory::create($data);
 
             return response()->json([
-                'status' => 200,
+                'status'  => 200,
                 'message' => 'Catégorie créée avec succès.',
-                'data' => new ChargeCategoryResource($item),
+                'data'    => new ChargeCategoryResource($item->load($this->with)),
             ]);
 
         } catch (Exception $e) {
 
             return response()->json([
-                'status' => 500,
+                'status'  => 500,
                 'message' => 'Erreur lors de la création.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -84,17 +89,17 @@ class ChargeCategoryService
             $item->update($data);
 
             return response()->json([
-                'status' => 200,
+                'status'  => 200,
                 'message' => 'Catégorie modifiée.',
-                'data' => new ChargeCategoryResource($item),
+                'data'    => new ChargeCategoryResource($item->load($this->with)),
             ]);
 
         } catch (Exception $e) {
 
             return response()->json([
-                'status' => 500,
+                'status'  => 500,
                 'message' => 'Erreur lors de la modification.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -108,16 +113,16 @@ class ChargeCategoryService
             $item->delete();
 
             return response()->json([
-                'status' => 200,
+                'status'  => 200,
                 'message' => 'Catégorie supprimée.',
             ]);
 
         } catch (Exception $e) {
 
             return response()->json([
-                'status' => 500,
+                'status'  => 500,
                 'message' => 'Erreur lors de la suppression.',
-                'error' => $e->getMessage(),
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }

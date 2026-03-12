@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Modules\Caisse\Services;
 
 use App\Modules\Caisse\Models\OperationCharge;
@@ -8,17 +9,19 @@ use Exception;
 
 class OperationChargeService
 {
+    private array $with = [
+        'chargeCategory:id,libelle',
+        'compte:id,libelle',
+        'createdBy:id,name',
+        'modifiedBy:id,name',
+    ];
+
     public function getAll()
     {
         try {
 
             $items = OperationCharge::visible()
-                ->with([
-                    'station:id,libelle',
-                    'chargeCategory:id,libelle',
-                    'compte:id,libelle',
-                    'createdBy:id,name',
-                ])
+                ->with($this->with)
                 ->orderByDesc('created_at')
                 ->get();
 
@@ -42,12 +45,7 @@ class OperationChargeService
         try {
 
             $item = OperationCharge::visible()
-                ->with([
-                    'station:id,libelle',
-                    'chargeCategory:id,libelle',
-                    'compte:id,libelle',
-                    'createdBy:id,name',
-                ])
+                ->with($this->with)
                 ->findOrFail($id);
 
             return response()->json([
@@ -74,7 +72,7 @@ class OperationChargeService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Charge enregistrée.',
-                'data'    => new OperationChargeResource($item),
+                'data'    => new OperationChargeResource($item->load($this->with)),
             ]);
 
         } catch (Exception $e) {
@@ -98,7 +96,7 @@ class OperationChargeService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Charge modifiée.',
-                'data'    => new OperationChargeResource($item),
+                'data'    => new OperationChargeResource($item->load($this->with)),
             ]);
 
         } catch (Exception $e) {
