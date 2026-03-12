@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\ApprovisionnementCuve;
@@ -204,12 +203,12 @@ class CuveService
         $ecart = $stockPhysique - $stockTheorique;
 
         return [
-            'date' => $date,
+            'date'            => $date,
 
-            'cuve' => [
-                'id'      => $cuve->id,
-                'libelle' => $cuve->libelle,
-                'pu_vente'=> (float) $cuve->pu_vente,
+            'cuve'            => [
+                'id'       => $cuve->id,
+                'libelle'  => $cuve->libelle,
+                'pu_vente' => (float) $cuve->pu_vente,
             ],
 
             'stock_matin'     => (float) $stockMatin,
@@ -319,107 +318,125 @@ class CuveService
     //     ]);
     // }
 
-
     /**
- * =========================
- * STOCK JOURNALIER PAR CUVE
- * (toutes les cuves pour une date)
- * =========================
- */
+     * =========================
+     * STOCK JOURNALIER PAR CUVE
+     * (toutes les cuves pour une date)
+     * =========================
+     */
 /**
  * =========================
  * STOCK ENTRE DEUX DATES
  * (toutes les cuves)
  * =========================
  */
-public function calculerStockEntreDates(?string $dateDebut = null, ?string $dateFin = null)
-{
-    try {
+/**
+ * =========================
+ * STOCK JOUR PAR JOUR
+ * ENTRE DEUX DATES
+ * =========================
+ */
+    public function calculerStockEntreDates(?string $dateDebut = null, ?string $dateFin = null)
+    {
+        try {
 
-        $debut = $dateDebut
-            ? Carbon::parse($dateDebut)->startOfDay()
-            : Carbon::today()->startOfDay();
+            $debut = $dateDebut
+                ? Carbon::parse($dateDebut)->startOfDay()
+                : Carbon::today()->startOfDay();
 
-        $fin = $dateFin
-            ? Carbon::parse($dateFin)->endOfDay()
-            : Carbon::today()->endOfDay();
+            $fin = $dateFin
+                ? Carbon::parse($dateFin)->endOfDay()
+                : Carbon::today()->endOfDay();
 
-        $cuves = Cuve::query()
-            ->orderBy('libelle')
-            ->get();
+            $cuves = Cuve::query()
+                ->orderBy('libelle')
+                ->get();
 
-        $data = [];
+            $data = [];
 
-        foreach ($cuves as $cuve) {
+            // On itère jour par jour
+            $current = $debut->copy();
 
-            $stockDebut = JaugeageCuve::visible()
-                ->where('id_cuve', $cuve->id)
-                ->whereBetween('created_at', [$debut, $fin])
-                ->orderBy('created_at')
-                ->value('volume_mesure') ?? 0;
+            while ($current->lte($fin)) {
 
-            $entrees = ApprovisionnementCuve::visible()
-                ->where('id_cuve', $cuve->id)
-                ->whereBetween('created_at', [$debut, $fin])
-                ->where('type_appro', 'approvisionnement')
-                ->sum('qte_appro');
+                $date        = $current->toDateString();
+                $lignesCuves = [];
 
-            $retourCuve = LigneVente::visible()
-                ->where('id_cuve', $cuve->id)
-                ->whereBetween('created_at', [$debut, $fin])
-                ->where('status', true)
-                ->sum('retour_cuve');
+                foreach ($cuves as $cuve) {
 
-            $sorties = LigneVente::visible()
-                ->where('id_cuve', $cuve->id)
-                ->whereBetween('created_at', [$debut, $fin])
-                ->where('status', true)
-                ->sum('qte_vendu');
+                    $stockDebut = JaugeageCuve::visible()
+                        ->where('id_cuve', $cuve->id)
+                        ->whereDate('created_at', $date)
+                        ->orderBy('created_at')
+                        ->value('volume_mesure') ?? 0;
 
-            $stockFinTheorique = $stockDebut + $entrees + $retourCuve - $sorties;
+                    $entrees = ApprovisionnementCuve::visible()
+                        ->where('id_cuve', $cuve->id)
+                        ->whereDate('created_at', $date)
+                        ->where('type_appro', 'approvisionnement')
+                        ->sum('qte_appro');
 
-            $stockJauge = JaugeageCuve::visible()
-                ->where('id_cuve', $cuve->id)
-                ->whereBetween('created_at', [$debut, $fin])
-                ->orderByDesc('created_at')
-                ->value('volume_mesure') ?? 0;
+                    $retourCuve = LigneVente::visible()
+                        ->where('id_cuve', $cuve->id)
+                        ->whereDate('created_at', $date)
+                        ->where('status', true)
+                        ->sum('retour_cuve');
 
-            $ecart = $stockJauge - $stockFinTheorique;
+                    $sorties = LigneVente::visible()
+                        ->where('id_cuve', $cuve->id)
+                        ->whereDate('created_at', $date)
+                        ->where('status', true)
+                        ->sum('qte_vendu');
 
-            $data[] = [
-                'periode' => $debut->toDateString() . ' → ' . $fin->toDateString(),
+                    $stockFinTheorique = $stockDebut + $entrees + $retourCuve - $sorties;
 
-                'carburant' => [
-                    'id'       => $cuve->id,
-                    'libelle'  => $cuve->libelle,
-                    'pu_vente' => (float) $cuve->pu_vente,
-                ],
+                    $stockJauge = JaugeageCuve::visible()
+                        ->where('id_cuve', $cuve->id)
+                        ->whereDate('created_at', $date)
+                        ->orderByDesc('created_at')
+                        ->value('volume_mesure') ?? 0;
 
-                'stock_debut'     => (float) $stockDebut,
-                'entrees'         => (float) $entrees,
-                'retour_cuve'     => (float) $retourCuve,
-                'sorties'         => (float) $sorties,
-                'stock_theorique' => (float) $stockFinTheorique,
-                'stock_jauge'     => (float) $stockJauge,
-                'ecart'           => (float) $ecart,
-            ];
+                    $ecart = $stockJauge - $stockFinTheorique;
+
+                    $lignesCuves[] = [
+                        'carburant'       => [
+                            'id'       => $cuve->id,
+                            'libelle'  => $cuve->libelle,
+                            'pu_vente' => (float) $cuve->pu_vente,
+                        ],
+                        'stock_debut'     => (float) $stockDebut,
+                        'entrees'         => (float) $entrees,
+                        'retour_cuve'     => (float) $retourCuve,
+                        'sorties'         => (float) $sorties,
+                        'stock_theorique' => (float) $stockFinTheorique,
+                        'stock_jauge'     => (float) $stockJauge,
+                        'ecart'           => (float) $ecart,
+                    ];
+                }
+
+                $data[] = [
+                    'date'  => $date,
+                    'cuves' => $lignesCuves,
+                ];
+
+                $current->addDay();
+            }
+
+            return response()->json([
+                'status'     => 200,
+                'date_debut' => $debut->toDateString(),
+                'date_fin'   => $fin->toDateString(),
+                'data'       => $data,
+            ]);
+
+        } catch (Exception $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors du calcul du stock.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'status'      => 200,
-            'date_debut'  => $debut->toDateString(),
-            'date_fin'    => $fin->toDateString(),
-            'data'        => $data,
-        ]);
-
-    } catch (Exception $e) {
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors du calcul du stock.',
-            'error'   => $e->getMessage(),
-        ], 500);
     }
-}
 
 }
