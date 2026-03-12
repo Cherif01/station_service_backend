@@ -3,6 +3,7 @@
 namespace App\Modules\Vente\Models;
 
 use App\Modules\Administration\Models\User;
+use App\Modules\Settings\Models\Fournisseur;
 use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -100,4 +101,13 @@ class ApprovisionnementCuve extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+
+   
+
+public function fournisseur(): BelongsTo
+{
+    return $this->belongsTo(Fournisseur::class, 'id_fournisseur');
+}
+
 }

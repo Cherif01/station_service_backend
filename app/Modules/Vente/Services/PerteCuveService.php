@@ -2,8 +2,8 @@
 
 namespace App\Modules\Vente\Services;
 
-use App\Modules\Vente\Models\PerteCuve;
 use App\Modules\Vente\Models\Cuve;
+use App\Modules\Vente\Models\PerteCuve;
 use App\Modules\Vente\Resources\PerteCuveResource;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -20,7 +20,7 @@ class PerteCuveService
         try {
 
             $pertes = PerteCuve::visible()
-                ->with(['cuve', 'station'])
+                ->with(['cuve', 'station', 'createdBy', 'modifiedBy'])
                 ->orderByDesc('created_at')
                 ->get();
 
@@ -34,13 +34,14 @@ class PerteCuveService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des pertes de cuves.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
      * =========================
-     * DÉTAIL D’UNE PERTE
+     * DÉTAIL D'UNE PERTE
      * =========================
      */
     public function getOne(int $id)
@@ -48,7 +49,7 @@ class PerteCuveService
         try {
 
             $perte = PerteCuve::visible()
-                ->with(['cuve', 'station'])
+                ->with(['cuve', 'station', 'createdBy', 'modifiedBy'])
                 ->find($id);
 
             if (! $perte) {
@@ -68,6 +69,7 @@ class PerteCuveService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération de la perte.',
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
@@ -124,7 +126,7 @@ class PerteCuveService
                 'status'  => 200,
                 'message' => 'Perte de cuve enregistrée.',
                 'data'    => new PerteCuveResource(
-                    $perte->load(['cuve', 'station'])
+                    $perte->load(['cuve', 'station', 'createdBy', 'modifiedBy'])
                 ),
             ], 201);
 
@@ -134,7 +136,7 @@ class PerteCuveService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur interne lors de l’enregistrement de la perte.',
+                'message' => 'Erreur interne lors de l\'enregistrement de la perte.',
                 'error'   => $e->getMessage(),
             ], 500);
         }

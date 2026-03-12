@@ -5,6 +5,7 @@ namespace App\Modules\Vente\Models;
 use App\Modules\Administration\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Auth;
 
 class Paiement extends Model
@@ -12,7 +13,7 @@ class Paiement extends Model
     protected $table = 'paiements';
 
     protected $fillable = [
-        'id_init_vente',
+        'id_creance',
         'montant_payer',
         'mode_paiement',
         'created_by',
@@ -22,22 +23,59 @@ class Paiement extends Model
         'montant_payer' => 'float',
     ];
 
+    /**
+     * =========================
+     * BOOT : AUDIT
+     * =========================
+     */
     protected static function booted(): void
     {
-        static::creating(fn ($m) => Auth::check() && $m->created_by = Auth::id());
+        static::creating(function ($m) {
+            if (Auth::check()) {
+                $m->created_by = Auth::id();
+            }
+        });
     }
 
+    /**
+     * =========================
+     * SCOPE : VISIBILITÉ
+     * =========================
+     */
     public function scopeVisible(Builder $query): Builder
     {
-        return $query->whereHas('vente', fn ($q) => $q->visible());
+        $user = Auth::user();
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $stationActiveId = request()->attributes->get('station_active_id');
+
+        if ($user->role === 'super_admin' && ! $stationActiveId) {
+            return $query;
+        }
+
+        if ($stationActiveId) {
+            return $query->whereHas('creance', function ($q) use ($stationActiveId) {
+                $q->where('id_station', $stationActiveId);
+            });
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
-    public function vente()
+    /**
+     * =========================
+     * RELATIONS
+     * =========================
+     */
+    public function creance(): BelongsTo
     {
-        return $this->belongsTo(InitVente::class, 'id_init_vente');
+        return $this->belongsTo(Creance::class, 'id_creance');
     }
 
-    public function createdBy()
+    public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }

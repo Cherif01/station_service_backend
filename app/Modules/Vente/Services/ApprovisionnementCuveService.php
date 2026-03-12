@@ -5,7 +5,6 @@ namespace App\Modules\Vente\Services;
 use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Vente\Models\Cuve;
 use App\Modules\Vente\Resources\ApprovisionnementCuveResource;
-use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class ApprovisionnementCuveService
@@ -20,7 +19,7 @@ class ApprovisionnementCuveService
         try {
 
             $items = ApprovisionnementCuve::visible()
-                ->with(['cuve', 'station'])
+                ->with(['cuve', 'station', 'createdBy','fournisseur'])
                 ->orderByDesc('created_at')
                 ->get();
 
@@ -49,7 +48,7 @@ class ApprovisionnementCuveService
         try {
 
             $item = ApprovisionnementCuve::visible()
-                ->with(['cuve', 'station'])
+                ->with(['cuve', 'station', 'createdBy','fournisseur'])
                 ->findOrFail($id);
 
             return response()->json([
@@ -78,19 +77,20 @@ class ApprovisionnementCuveService
             $cuve = Cuve::findOrFail($data['id_cuve']);
 
             $appro = ApprovisionnementCuve::create([
-                'id_station'   => request()->attributes->get('station_active_id'),
-                'id_cuve'      => $cuve->id,
-                'qte_appro'    => $data['qte_appro'],
-                'pu_unitaire'  => $data['pu_unitaire'] ?? 0,
-                'type_appro'   => 'approvisionnement',
-                'commentaire'  => $data['commentaire'] ?? null,
+                'id_station'     => request()->attributes->get('station_active_id'),
+                'id_cuve'        => $cuve->id,
+                'id_fournisseur' => $data['id_fournisseur'] ?? null,
+                'qte_appro'      => $data['qte_appro'],
+                'pu_unitaire'    => $data['pu_unitaire'] ?? 0,
+                'type_appro'     => 'approvisionnement',
+                'commentaire'    => $data['commentaire'] ?? null,
             ]);
 
             return response()->json([
-                'status'  => 201,
+                'status'  => 200,
                 'message' => 'Approvisionnement enregistré avec succès.',
                 'data'    => new ApprovisionnementCuveResource(
-                    $appro->load(['cuve', 'station'])
+                    $appro->load(['cuve', 'station', 'createdBy','fournisseur'])
                 ),
             ]);
 
@@ -98,7 +98,7 @@ class ApprovisionnementCuveService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la création de l’approvisionnement.',
+                'message' => 'Erreur lors de la création de l\'approvisionnement.',
                 'error'   => $e->getMessage(),
             ]);
         }
@@ -116,19 +116,20 @@ class ApprovisionnementCuveService
             $cuve = Cuve::findOrFail($data['id_cuve']);
 
             $retour = ApprovisionnementCuve::create([
-                'id_station'   => request()->attributes->get('station_active_id'),
-                'id_cuve'      => $cuve->id,
-                'qte_appro'    => $data['qte_appro'],
-                'pu_unitaire'  => $data['pu_unitaire'] ?? 0,
-                'type_appro'   => 'retour_cuve',
-                'commentaire'  => $data['commentaire'] ?? null,
+                'id_station'     => request()->attributes->get('station_active_id'),
+                'id_cuve'        => $cuve->id,
+                'id_fournisseur' => $data['id_fournisseur'] ?? null,
+                'qte_appro'      => $data['qte_appro'],
+                'pu_unitaire'    => $data['pu_unitaire'] ?? 0,
+                'type_appro'     => 'retour_cuve',
+                'commentaire'    => $data['commentaire'] ?? null,
             ]);
 
             return response()->json([
                 'status'  => 201,
                 'message' => 'Retour de cuve enregistré.',
                 'data'    => new ApprovisionnementCuveResource(
-                    $retour->load(['cuve', 'station'])
+                    $retour->load(['cuve', 'station', 'createdBy'])
                 ),
             ]);
 
@@ -136,7 +137,7 @@ class ApprovisionnementCuveService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de l’enregistrement du retour de cuve.',
+                'message' => 'Erreur lors de l\'enregistrement du retour de cuve.',
                 'error'   => $e->getMessage(),
             ]);
         }
@@ -158,7 +159,9 @@ class ApprovisionnementCuveService
             return response()->json([
                 'status'  => 200,
                 'message' => 'Approvisionnement modifié avec succès.',
-                'data'    => new ApprovisionnementCuveResource($appro),
+                'data'    => new ApprovisionnementCuveResource(
+                    $appro->load(['cuve', 'station', 'createdBy','fournisseur'])
+                ),
             ]);
 
         } catch (Throwable $e) {

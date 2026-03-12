@@ -18,9 +18,16 @@ class ApprovisionnementCuveResource extends JsonResource
 
             'cuve' => $this->whenLoaded('cuve', fn () => [
                 'id'        => $this->cuve->id,
-                'reference' => $this->cuve->reference,
+               
                 'libelle'   => $this->cuve->libelle,
             ]),
+              'fournisseur' => $this->whenLoaded('fournisseur', fn () => $this->fournisseur ? [
+                'id'            => $this->fournisseur->id,
+                'raison_sociale'=> $this->fournisseur->raison_sociale,
+                'nom_complet'   => $this->fournisseur->nom_complet,
+                'telephone'     => $this->fournisseur->telephone,
+            ] : null),
+
 
             'created_by' => $this->createdBy?->name,
             'created_at' => $this->created_at?->toDateTimeString(),

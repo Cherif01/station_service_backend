@@ -36,24 +36,33 @@ class Client extends Model
     /**
      * VISIBILITÉ PAR STATION ACTIVE
      */
-    public function scopeVisible(Builder $query): Builder
-    {
-        $stationId = request()->attributes->get('station_active_id');
-        return $stationId
-            ? $query->where('id_station', $stationId)
-            : $query->whereRaw('1=0');
+  public function scopeVisible(Builder $query): Builder
+{
+    $user = Auth::user();
+
+    if (! $user) {
+        return $query->whereRaw('1 = 0');
     }
+
+    $stationActiveId = request()->attributes->get('station_active_id');
+
+    if ($user->role === 'super_admin' && ! $stationActiveId) {
+        return $query;
+    }
+
+    if ($stationActiveId) {
+        return $query->where('id_station', $stationActiveId);
+    }
+
+    return $query->whereRaw('1 = 0');
+}
 
     public function station()
     {
         return $this->belongsTo(Station::class, 'id_station');
     }
 
-    public function ventes()
-    {
-        return $this->hasMany(InitVente::class, 'id_client');
-    }
-
+   
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');

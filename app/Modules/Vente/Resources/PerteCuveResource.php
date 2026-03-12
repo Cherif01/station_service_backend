@@ -10,30 +10,20 @@ class PerteCuveResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            // =========================
-            // Identité
-            // =========================
             'id'              => $this->id,
             'quantite_perdue' => (float) $this->quantite_perdue,
             'commentaire'     => $this->commentaire,
 
-            // =========================
-            // Cuve (champs réels UNIQUEMENT)
-            // =========================
-            'cuve' => $this->whenLoaded(
-                'cuve',
-                fn () => [
-                    'id'         => $this->cuve->id,
-                    'libelle'    => $this->cuve->libelle,
-                    'reference'  => $this->cuve->reference,
-                    'type_cuve'  => $this->cuve->type_cuve,
-                    'id_station' => $this->cuve->id_station,
-                ]
-            ),
+            'cuve' => $this->whenLoaded('cuve', fn () => [
+                'id'      => $this->cuve->id,
+                'libelle' => $this->cuve->libelle,
+            ]),
 
-            // =========================
-            // Audit
-            // =========================
+            'station' => $this->whenLoaded('station', fn () => [
+                'id'      => $this->station->id,
+                'libelle' => $this->station->libelle,
+            ]),
+
             'created_by' => $this->createdBy?->name,
             'modify_by'  => $this->modifiedBy?->name,
 

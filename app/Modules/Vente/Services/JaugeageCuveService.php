@@ -20,7 +20,7 @@ class JaugeageCuveService
         try {
 
             $items = JaugeageCuve::visible()
-                ->with('cuve.station')
+                ->with(['cuve', 'station', 'createdBy', 'modifiedBy'])
                 ->orderByDesc('created_at')
                 ->get();
 
@@ -34,8 +34,8 @@ class JaugeageCuveService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des jaugeages.',
+                'error'   => $e->getMessage(),
             ], 500);
-
         }
     }
 
@@ -49,7 +49,7 @@ class JaugeageCuveService
         try {
 
             $item = JaugeageCuve::visible()
-                ->with('cuve.station')
+                ->with(['cuve', 'station', 'createdBy', 'modifiedBy'])
                 ->findOrFail($id);
 
             return response()->json([
@@ -63,7 +63,6 @@ class JaugeageCuveService
                 'status'  => 404,
                 'message' => 'Jaugeage introuvable.',
             ], 404);
-
         }
     }
 
@@ -86,14 +85,8 @@ class JaugeageCuveService
                     'status'  => 422,
                     'message' => 'Hauteur de cuve invalide.',
                 ], 422);
-
             }
 
-            /**
-             * =================================================
-             * 🔒 CUVE VISIBLE
-             * =================================================
-             */
             $cuve = Cuve::visible()->find($data['id_cuve']);
 
             if (! $cuve) {
@@ -102,31 +95,23 @@ class JaugeageCuveService
                     'status'  => 404,
                     'message' => 'Cuve introuvable ou non autorisée.',
                 ], 404);
-
             }
 
-            /**
-             * =================================================
-             * 🔹 ENREGISTREMENT JAUGEAGE
-             * =================================================
-             */
             $jaugeage = JaugeageCuve::create([
-
                 'id_cuve'       => $cuve->id,
                 'hauteur'       => $hauteur,
                 'volume_mesure' => $data['volume_mesure'] ?? 0,
                 'commentaire'   => $data['commentaire'] ?? null,
                 'status'        => true,
-
             ]);
 
             DB::commit();
 
             return response()->json([
-                'status'  => 200,
+                'status'  => 201,
                 'message' => 'Jaugeage enregistré avec succès.',
                 'data'    => new JaugeageCuveResource(
-                    $jaugeage->load('cuve.station')
+                    $jaugeage->load(['cuve', 'station', 'createdBy', 'modifiedBy'])
                 ),
             ], 201);
 
@@ -136,10 +121,9 @@ class JaugeageCuveService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de l’enregistrement du jaugeage.',
+                'message' => 'Erreur lors de l\'enregistrement du jaugeage.',
                 'error'   => $e->getMessage(),
             ], 500);
-
         }
     }
 
@@ -155,7 +139,6 @@ class JaugeageCuveService
         try {
 
             $jaugeage = JaugeageCuve::visible()
-                ->with('cuve')
                 ->lockForUpdate()
                 ->find($id);
 
@@ -165,7 +148,6 @@ class JaugeageCuveService
                     'status'  => 404,
                     'message' => 'Jaugeage introuvable.',
                 ], 404);
-
             }
 
             $jaugeage->delete();
@@ -184,8 +166,8 @@ class JaugeageCuveService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la suppression du jaugeage.',
+                'error'   => $e->getMessage(),
             ], 500);
-
         }
     }
 }

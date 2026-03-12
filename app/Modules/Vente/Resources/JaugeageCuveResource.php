@@ -7,44 +7,27 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class JaugeageCuveResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     */
     public function toArray(Request $request): array
     {
         return [
             'id'            => $this->id,
-            'id_cuve'       => $this->id_cuve,
-
             'hauteur'       => (float) $this->hauteur,
             'volume_mesure' => (float) $this->volume_mesure,
-
             'commentaire'   => $this->commentaire,
             'status'        => (bool) $this->status,
 
-            /**
-             * =========================
-             * CUVE
-             * =========================
-             */
-            'cuve' => $this->whenLoaded('cuve', function () {
+            'cuve' => $this->whenLoaded('cuve', fn () => [
+                'id'      => $this->cuve->id,
+                'libelle' => $this->cuve->libelle,
+            ]),
 
-                return [
-                    'id'           => $this->cuve->id,
-                    'libelle'      => $this->cuve->libelle,
-                    'reference'    => $this->cuve->reference,
-                    'qt_actuelle'  => (float) $this->cuve->qt_actuelle,
-                ];
+            'station' => $this->whenLoaded('station', fn () => [
+                'id'      => $this->station->id,
+                'libelle' => $this->station->libelle,
+            ]),
 
-            }),
-
-            /**
-             * =========================
-             * AUDIT
-             * =========================
-             */
-            'created_by' => $this->created_by,
-            'modify_by'  => $this->modify_by,
+            'created_by' => $this->createdBy?->name,
+            'modify_by'  => $this->modifiedBy?->name,
 
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
