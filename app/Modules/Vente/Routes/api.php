@@ -18,11 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente')->group(function () {
    
-    //  Route::apiResource('ligne-ventes',LigneVenteController::class);
-    // Route::get(
-    //     'statistiques/cuves/journalier',
-    //     [CuveController::class, 'calculerStockJournalierToutesCuves']
-    // );
+    
 
     Route::get('/carburant/stock-journalier', [CuveController::class, 'stockEntreDates']);
 
@@ -36,28 +32,14 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente
         [CuveController::class, 'calculerToutesCuvesEntreDates']
     );
     
-    Route::post(
-        'ligne-ventes/index-fin/{id}',
-        [LigneVenteController::class, 'update']
-    );
-    Route::get(
-        'liste/lignes-ventes',
-        [LigneVenteController::class, 'index']
-    );
-
-    Route::get(
-        'liste',
-        [ValidationVenteController::class, 'index']
-    );
+   
+   
     Route::get(
         'releve-pompes',
         [LigneVenteController::class, 'index1']
     );
 
-    Route::post(
-        'validation/ligne-ventes',
-        [ValidationVenteController::class, 'store']
-    );
+   
 
     Route::post(
         'retour-cuves',

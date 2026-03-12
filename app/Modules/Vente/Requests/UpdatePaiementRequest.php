@@ -16,8 +16,8 @@ class UpdatePaiementRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'montant_payer' => 'sometimes|numeric|min:0',
-            'mode_paiement' => 'sometimes|string|max:50',
+            'montant_payer' => 'sometimes|numeric|min:0.01',
+            'mode_paiement' => 'sometimes|nullable|string|max:50',
         ];
     }
 

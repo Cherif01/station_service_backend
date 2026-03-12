@@ -23,13 +23,20 @@ class CreanceResource extends JsonResource
             // 🔹 IDENTITÉ
             // =============================
             'id'          => $this->id,
-            'date'        => $this->date,
             'commentaire' => $this->commentaire,
 
             // =============================
             // 🔹 CLIENT
             // =============================
             'client' => $etatCreance['client'] ?? null,
+
+            // =============================
+            // 🔹 POMPE
+            // =============================
+            'pompe' => $this->whenLoaded('pompe', fn () => $this->pompe ? [
+                'id'        => $this->pompe->id,
+                'reference' => $this->pompe->reference ?? null,
+            ] : null),
 
             // =============================
             // 🔹 FACTURATION (SYNTHÈSE)
@@ -44,8 +51,8 @@ class CreanceResource extends JsonResource
             // =============================
             // 🔹 PAIEMENTS (DÉTAIL)
             // =============================
-            'paiements' => $this->whenLoaded('initVente.paiements', function () {
-                return $this->initVente->paiements->map(fn ($p) => [
+            'paiements' => $this->whenLoaded('paiements', function () {
+                return $this->paiements->map(fn ($p) => [
                     'id'            => $p->id,
                     'montant_payer' => (float) $p->montant_payer,
                     'mode_paiement' => $p->mode_paiement,

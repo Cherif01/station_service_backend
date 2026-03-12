@@ -1,9 +1,9 @@
 <?php
+
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Paiement;
 use App\Modules\Vente\Resources\PaiementResource;
-use App\Modules\Vente\Services\InitVenteService;
 use Illuminate\Support\Facades\DB;
 
 class PaiementService
@@ -16,10 +16,8 @@ class PaiementService
     public function index()
     {
         $paiements = Paiement::visible()
-            ->with([
-                'vente',
-                'createdBy', // 🔹 IMPORTANT
-            ])
+            ->with(['creance', 'creance.client', 'createdBy'])
+            ->orderByDesc('id')
             ->get();
 
         return response()->json([
@@ -36,16 +34,13 @@ class PaiementService
     public function getOne(int $id)
     {
         $paiement = Paiement::visible()
-            ->with([
-                'vente',
-                'createdBy', // 🔹 IMPORTANT
-            ])
+            ->with(['creance', 'creance.client', 'createdBy'])
             ->find($id);
 
         if (! $paiement) {
             return response()->json([
                 'status'  => 404,
-                'message' => 'Paiement introuvable',
+                'message' => 'Paiement introuvable.',
             ], 404);
         }
 
@@ -60,38 +55,6 @@ class PaiementService
      * 🔹 CRÉATION
      * =================================================
      */
-    // public function store(array $data)
-    // {
-    //     DB::beginTransaction();
-    //     try {
-
-    //         $paiement = Paiement::create($data);
-
-    //         DB::commit();
-
-    //         return response()->json([
-    //             'status'  => 200,
-    //             'message' => 'Paiement enregistré',
-    //             'data'    => new PaiementResource(
-    //                 $paiement->load([
-    //                     'vente',
-    //                     'createdBy', // 🔹 IMPORTANT
-    //                 ])
-    //             ),
-    //         ], 200);
-
-    //     } catch (\Throwable $e) {
-
-    //         DB::rollBack();
-
-    //         return response()->json([
-    //             'status'  => 500,
-    //             'message' => 'Erreur lors de l’enregistrement du paiement',
-    //             'error'   => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
-
     public function store(array $data)
     {
         DB::beginTransaction();
@@ -100,34 +63,32 @@ class PaiementService
 
             /**
              * =============================================
-             * 1️⃣ VÉRIFICATION ÉTAT DE LA VENTE
+             * 1️⃣ VÉRIFICATION ÉTAT DE LA CRÉANCE
              * =============================================
              */
-            $etatVente = app(InitVenteService::class)
-                ->getEtatVente($data['id_init_vente']);
+            $etatCreance = app(CreanceService::class)
+                ->getEtatCreance($data['id_creance']);
 
-            if ($etatVente['status'] !== 200) {
+            if ($etatCreance['status'] !== 200) {
                 DB::rollBack();
-
                 return response()->json([
                     'status'  => 404,
-                    'message' => 'Vente introuvable.',
+                    'message' => 'Créance introuvable.',
                 ], 404);
             }
 
-            $facturation = $etatVente['facturation'];
+            $facturation = $etatCreance['facturation'];
 
             /**
              * =============================================
-             * 2️⃣ VENTE DÉJÀ SOLDÉE
+             * 2️⃣ CRÉANCE DÉJÀ SOLDÉE
              * =============================================
              */
             if ($facturation['etat'] === 'totalement_paye') {
                 DB::rollBack();
-
                 return response()->json([
                     'status'  => 422,
-                    'message' => 'Cette vente est déjà totalement payée.',
+                    'message' => 'Cette créance est déjà totalement payée.',
                 ], 422);
             }
 
@@ -138,7 +99,6 @@ class PaiementService
              */
             if ($data['montant_payer'] <= 0) {
                 DB::rollBack();
-
                 return response()->json([
                     'status'  => 422,
                     'message' => 'Le montant du paiement doit être supérieur à zéro.',
@@ -147,10 +107,9 @@ class PaiementService
 
             if ($data['montant_payer'] > $facturation['reste_a_payer']) {
                 DB::rollBack();
-
                 return response()->json([
                     'status'  => 422,
-                    'message' => 'Le montant dépasse le reste à payer.',
+                    'message' => 'Le montant dépasse le reste à payer (' . $facturation['reste_a_payer'] . ').',
                 ], 422);
             }
 
@@ -167,10 +126,7 @@ class PaiementService
                 'status'  => 200,
                 'message' => 'Paiement enregistré avec succès.',
                 'data'    => new PaiementResource(
-                    $paiement->load([
-                        'vente',
-                        'createdBy',
-                    ])
+                    $paiement->load(['creance', 'creance.client', 'createdBy'])
                 ),
             ], 200);
 
@@ -180,7 +136,7 @@ class PaiementService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de l’enregistrement du paiement.',
+                'message' => 'Erreur lors de l\'enregistrement du paiement.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
@@ -194,6 +150,7 @@ class PaiementService
     public function update(int $id, array $data)
     {
         DB::beginTransaction();
+
         try {
 
             $paiement = Paiement::visible()
@@ -204,7 +161,7 @@ class PaiementService
                 DB::rollBack();
                 return response()->json([
                     'status'  => 404,
-                    'message' => 'Paiement introuvable',
+                    'message' => 'Paiement introuvable.',
                 ], 404);
             }
 
@@ -214,12 +171,9 @@ class PaiementService
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Paiement mis à jour',
+                'message' => 'Paiement mis à jour.',
                 'data'    => new PaiementResource(
-                    $paiement->load([
-                        'vente',
-                        'createdBy', // 🔹 IMPORTANT
-                    ])
+                    $paiement->load(['creance', 'creance.client', 'createdBy'])
                 ),
             ], 200);
 
@@ -229,7 +183,7 @@ class PaiementService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur mise à jour paiement',
+                'message' => 'Erreur lors de la mise à jour du paiement.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
@@ -243,6 +197,7 @@ class PaiementService
     public function delete(int $id)
     {
         DB::beginTransaction();
+
         try {
 
             $paiement = Paiement::visible()
@@ -253,7 +208,7 @@ class PaiementService
                 DB::rollBack();
                 return response()->json([
                     'status'  => 404,
-                    'message' => 'Paiement introuvable',
+                    'message' => 'Paiement introuvable.',
                 ], 404);
             }
 
@@ -263,7 +218,7 @@ class PaiementService
 
             return response()->json([
                 'status'  => 200,
-                'message' => 'Paiement supprimé',
+                'message' => 'Paiement supprimé.',
             ], 200);
 
         } catch (\Throwable $e) {
@@ -272,18 +227,21 @@ class PaiementService
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur suppression paiement',
+                'message' => 'Erreur lors de la suppression du paiement.',
                 'error'   => $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * =================================================
+     * 🔹 TOTAL PAYÉ POUR LA STATION ACTIVE
+     * =================================================
+     */
     public function getTotalMontantPayeStation(): float
     {
-        return (float) Paiement::whereHas('vente', function ($q) {
-            $q->visible(); // scope station côté InitVente
-        })
-            ->sum('montant_payer');
+        return (float) Paiement::whereHas('creance', function ($q) {
+            $q->visible();
+        })->sum('montant_payer');
     }
-
 }

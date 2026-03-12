@@ -10,19 +10,24 @@ class PaiementResource extends JsonResource
     {
         return [
             'id'            => $this->id,
-            'montant_payer' => $this->montant_payer,
+            'montant_payer' => (float) $this->montant_payer,
             'mode_paiement' => $this->mode_paiement,
 
-            'id_init_vente' => $this->id_init_vente,
+            // créance (léger)
+            'creance' => $this->whenLoaded('creance', fn () => $this->creance ? [
+                'id'      => $this->creance->id,
+                'montant' => (float) $this->creance->montant,
+                'client'  => $this->creance->relationLoaded('client') ? [
+                    'id'          => $this->creance->client?->id,
+                    'nom_complet' => $this->creance->client?->nom_complet,
+                ] : null,
+            ] : null),
 
-            // vente (léger)
-            'vente' => $this->whenLoaded('vente', fn () => [
-                'id'        => $this->vente->id,
-                'reference' => $this->vente->reference,
-            ]),
-
-            'created_by' => $this->created_by,
-            'created_at' => $this->created_at,
+            'created_by' => $this->whenLoaded(
+                'createdBy',
+                fn () => $this->createdBy?->name
+            ),
+            'created_at' => $this->created_at?->toDateTimeString(),
         ];
     }
 }

@@ -22,12 +22,22 @@ class CreanceController extends Controller
      */
     public function index()
     {
-        return $this->creanceService->getListeInitVentesCreance();
+        return $this->creanceService->index();
     }
 
     /**
      * =================================================
-     * 🔹 CRÉATION CRÉANCES
+     * 🔹 UNE CRÉANCE
+     * =================================================
+     */
+    public function show(int $id)
+    {
+        return $this->creanceService->getOne($id);
+    }
+
+    /**
+     * =================================================
+     * 🔹 CRÉATION
      * =================================================
      */
     public function store(StoreCreanceRequest $request)
@@ -35,5 +45,25 @@ class CreanceController extends Controller
         return $this->creanceService->store(
             $request->validated()
         );
+    }
+
+    /**
+     * =================================================
+     * 🔹 MISE À JOUR
+     * =================================================
+     */
+    public function update(StoreCreanceRequest $request, int $id)
+    {
+        return $this->creanceService->update($id, $request->validated());
+    }
+
+    /**
+     * =================================================
+     * 🔹 SUPPRESSION
+     * =================================================
+     */
+    public function destroy(int $id)
+    {
+        return $this->creanceService->delete($id);
     }
 }

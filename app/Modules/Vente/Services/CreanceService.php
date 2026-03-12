@@ -3,215 +3,226 @@
 namespace App\Modules\Vente\Services;
 
 use App\Modules\Vente\Models\Creance;
-use App\Modules\Vente\Models\InitVente;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use App\Modules\Vente\Resources\CreanceResource;
+use Illuminate\Support\Facades\DB;
 
 class CreanceService
 {
-public function store(array $data)
-{
-    DB::beginTransaction();
-
-    try {
-
-        $user = Auth::user();
-
-        if (! $user) {
-            DB::rollBack();
-            return response()->json([
-                'status'  => 401,
-                'message' => 'Utilisateur non authentifié.',
-            ], 401);
-        }
-
-        $idStation = request()->attributes->get('station_active_id');
-
-        if (! $idStation) {
-            DB::rollBack();
-            return response()->json([
-                'status'  => 400,
-                'message' => 'Aucune station active détectée.',
-            ], 400);
-        }
-
-        $affectation = $user->activeAffectation();
-
-        if (! $affectation) {
-            DB::rollBack();
-            return response()->json([
-                'status'  => 403,
-                'message' => 'Aucune affectation active.',
-            ], 403);
-        }
-
-        /**
-         * =================================================
-         * 1️⃣ INIT VENTE (AUTO)
-         * =================================================
-         */
-        $initVente = InitVente::create([
-            'id_client'      => $data['id_client'],
-            'id_affectation' => $affectation->id,
-            'status'         => false,
-        ]);
-
-        /**
-         * =================================================
-         * 2️⃣ CRÉATION DES CRÉANCES (TABLEAU)
-         * =================================================
-         */
-        foreach ($data['creances'] as $item) {
-
-            $quantite = (float) $item['quantite'];
-            $prix     = (float) $item['prix_unitaire'];
-
-            if ($quantite <= 0) {
-                DB::rollBack();
-                return response()->json([
-                    'status'  => 400,
-                    'message' => 'La quantité doit être supérieure à zéro.',
-                ], 400);
-            }
-
-            Creance::create([
-                'id_init_vente' => $initVente->id,
-                'date'          => $item['date'] ?? null,
-                'quantite'      => $quantite,
-                'prix_unitaire' => $prix,
-                'montant'       => $quantite * $prix,
-                'commentaire'   => $item['commentaire'] ?? 'creance',
-            ]);
-        }
-
-        DB::commit();
-
-        return response()->json([
-            'status'  => 200,
-            'message' => 'Créances créées avec succès.',
-        ], 200);
-
-    } catch (\Throwable $e) {
-
-        DB::rollBack();
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur création créance.',
-            'error'   => $e->getMessage(),
-        ], 500);
-    }
-}
-
-
-
-public function getListeInitVentesCreance()
-{
-    try {
-
-        $ventes = InitVente::visible()
-            ->whereHas('creances')
-            ->with([
-                'client',
-                'creances',
-                'paiements',
-                'createdBy',
-                'modifiedBy',
-            ])
+    /**
+     * =================================================
+     * 🔹 LISTE DES CRÉANCES
+     * =================================================
+     */
+    public function index()
+    {
+        $creances = Creance::visible()
+            ->with(['client', 'pompe', 'paiements', 'paiements.createdBy', 'createdBy', 'modifiedBy'])
             ->orderByDesc('id')
             ->get();
 
-        if ($ventes->isEmpty()) {
+        return response()->json([
+            'status' => 200,
+            'data'   => CreanceResource::collection($creances),
+        ], 200);
+    }
+
+    /**
+     * =================================================
+     * 🔹 UNE CRÉANCE
+     * =================================================
+     */
+    public function getOne(int $id)
+    {
+        $creance = Creance::visible()
+            ->with(['client', 'pompe', 'paiements', 'paiements.createdBy', 'createdBy', 'modifiedBy'])
+            ->find($id);
+
+        if (! $creance) {
             return response()->json([
                 'status'  => 404,
-                'message' => 'Aucune vente avec créance trouvée.',
-                'data'    => [],
+                'message' => 'Créance introuvable.',
             ], 404);
         }
 
         return response()->json([
             'status' => 200,
-            'data'   => CreanceResource::collection($ventes),
+            'data'   => new CreanceResource($creance),
         ], 200);
-
-    } catch (\Throwable $e) {
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur récupération des créances.',
-            'error'   => $e->getMessage(),
-        ], 500);
     }
-}
 
+    /**
+     * =================================================
+     * 🔹 CRÉATION
+     * =================================================
+     */
+    public function store(array $data)
+    {
+        DB::beginTransaction();
 
+        try {
 
-public function getEtatCreance(int $idInitVente): array
-{
-    $vente = InitVente::visible()
-        ->with([
-            'client',
-            'creances',
-            'paiements',
-            'createdBy',
-            'modifiedBy',
-        ])
-        ->find($idInitVente);
+            $creance = Creance::create($data);
 
-    if (! $vente) {
+            DB::commit();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Créance enregistrée avec succès.',
+                'data'    => new CreanceResource(
+                    $creance->load(['client', 'pompe', 'paiements', 'createdBy'])
+                ),
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la création de la créance.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * =================================================
+     * 🔹 MISE À JOUR
+     * =================================================
+     */
+    public function update(int $id, array $data)
+    {
+        DB::beginTransaction();
+
+        try {
+
+            $creance = Creance::visible()
+                ->lockForUpdate()
+                ->find($id);
+
+            if (! $creance) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Créance introuvable.',
+                ], 404);
+            }
+
+            $creance->update($data);
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Créance mise à jour.',
+                'data'    => new CreanceResource(
+                    $creance->load(['client', 'pompe', 'paiements', 'createdBy', 'modifiedBy'])
+                ),
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la mise à jour de la créance.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * =================================================
+     * 🔹 SUPPRESSION
+     * =================================================
+     */
+    public function delete(int $id)
+    {
+        DB::beginTransaction();
+
+        try {
+
+            $creance = Creance::visible()
+                ->lockForUpdate()
+                ->find($id);
+
+            if (! $creance) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Créance introuvable.',
+                ], 404);
+            }
+
+            $creance->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'status'  => 200,
+                'message' => 'Créance supprimée.',
+            ], 200);
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de la suppression de la créance.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * =================================================
+     * 🔹 ÉTAT MÉTIER D'UNE CRÉANCE
+     * =================================================
+     */
+    public function getEtatCreance(int $idCreance): array
+    {
+        $creance = Creance::visible()
+            ->with(['client', 'paiements'])
+            ->find($idCreance);
+
+        if (! $creance) {
+            return [
+                'status'      => 404,
+                'message'     => 'Créance introuvable.',
+                'client'      => null,
+                'facturation' => [],
+            ];
+        }
+
+        $client = [
+            'id'          => $creance->client?->id,
+            'nom_complet' => $creance->client?->nom_complet,
+            'telephone'   => $creance->client?->telephone,
+        ];
+
+        $totalCreance = (float) $creance->montant;
+        $totalPaye    = (float) $creance->paiements->sum('montant_payer');
+        $reste        = max($totalCreance - $totalPaye, 0);
+
+        if ($totalPaye <= 0) {
+            $etat = 'non_paye';
+        } elseif ($totalPaye < $totalCreance) {
+            $etat = 'partiellement_paye';
+        } else {
+            $etat = 'totalement_paye';
+        }
+
         return [
-            'status'      => 404,
-            'message'     => 'Vente introuvable.',
-            'client'      => null,
-            'facturation' => [],
+            'status'      => 200,
+            'client'      => $client,
+            'facturation' => [
+                'total_creance' => round($totalCreance, 2),
+                'total_paye'    => round($totalPaye, 2),
+                'reste_a_payer' => round($reste, 2),
+                'etat'          => $etat,
+            ],
         ];
     }
-
-    /**
-     * =============================================
-     * 1️⃣ CLIENT
-     * =============================================
-     */
-    $client = [
-        'id'          => $vente->client?->id,
-        'nom_complet' => $vente->client?->nom_complet,
-        'telephone'   => $vente->client?->telephone,
-    ];
-
-    /**
-     * =============================================
-     * 2️⃣ FACTURATION
-     * =============================================
-     */
-    $totalCreance = (float) $vente->creances->sum('montant');
-
-    $totalPaye = (float) $vente->paiements->sum('montant_payer');
-
-    $reste = max($totalCreance - $totalPaye, 0);
-
-    if ($totalPaye <= 0) {
-        $etat = 'non_paye';
-    } elseif ($totalPaye < $totalCreance) {
-        $etat = 'partiellement_paye';
-    } else {
-        $etat = 'totalement_paye';
-    }
-
-    return [
-        'status' => 200,
-
-        'client' => $client,
-
-        'facturation' => [
-            'total_creance' => round($totalCreance, 2),
-            'total_paye'    => round($totalPaye, 2),
-            'reste_a_payer' => round($reste, 2),
-            'etat'          => $etat,
-        ],
-    ];
-}
-
-
-
 }
