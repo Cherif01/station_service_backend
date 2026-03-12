@@ -31,9 +31,18 @@ class LigneVenteCollection extends ResourceCollection
 
                 'pompe' => $item->affectation?->pompe
                     ? [
-                        'id'        => $item->affectation->pompe->id,
-                        'libelle'   => $item->affectation->pompe->libelle,
-                        'reference' => $item->affectation->pompe->reference,
+                        'id'         => $item->affectation->pompe->id,
+                        'libelle'    => $item->affectation->pompe->libelle,
+                        'reference'  => $item->affectation->pompe->reference,
+                        'type_pompe' => $item->affectation->pompe->type_pompe,
+                    ]
+                    : null,
+
+                'pompiste' => $item->affectation?->user
+                    ? [
+                        'id'        => $item->affectation->user->id,
+                        'name'      => $item->affectation->user->name,
+                        'telephone' => $item->affectation->user->telephone,
                     ]
                     : null,
 

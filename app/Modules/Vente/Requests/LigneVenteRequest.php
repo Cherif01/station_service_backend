@@ -22,6 +22,7 @@ class LigneVenteRequest extends FormRequest
             'id_station'     => ['nullable', 'exists:stations,id'],
             'id_cuve'        => ['nullable', 'exists:produits,id'],
             'id_affectation' => ['nullable', 'exists:affectations,id'],
+            'id_pompiste' => ['required', 'exists:users,id'],
 
             // =========================
             // 🔹 Données de vente
@@ -32,6 +33,8 @@ class LigneVenteRequest extends FormRequest
             'qte_vendu'      => ['nullable', 'numeric'],
             'retour_cuve'      => ['nullable', 'numeric'],
             'commentaire'      => ['nullable', 'string'],
+            'status' => ['nullable', 'boolean'],
+
         ];
     }
 

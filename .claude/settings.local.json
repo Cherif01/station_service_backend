@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(git restore:*)",
+      "Bash(rm database/migrations/tenant/2026_03_12_020951_make_id_user_nullable_in_affectations_table.php)"
+    ]
+  }
+}
