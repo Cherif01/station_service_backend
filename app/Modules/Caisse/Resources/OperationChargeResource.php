@@ -12,6 +12,10 @@ class OperationChargeResource extends JsonResource
         return [
             'id' => $this->id,
 
+            'station'   => $this->whenLoaded('station', fn () => [
+                'id'      => $this->station?->id,
+                'libelle' => $this->station?->libelle,
+            ]),
             'categorie' => $this->whenLoaded('chargeCategory', fn () => $this->chargeCategory?->libelle),
             'compte'    => $this->whenLoaded('compte', fn () => $this->compte?->libelle),
 

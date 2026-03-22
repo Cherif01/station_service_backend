@@ -3,6 +3,7 @@
 namespace App\Modules\Caisse\Models;
 
 use App\Modules\Administration\Models\User;
+use App\Modules\Settings\Models\Station;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
@@ -12,6 +13,7 @@ class OperationCharge extends Model
     protected $table = 'operation_charges';
 
     protected $fillable = [
+        'id_station',
         'id_charge_category',
         'id_compte',
         'montant',
@@ -41,7 +43,23 @@ class OperationCharge extends Model
      */
     public function scopeVisible(Builder $query): Builder
     {
-        return Auth::check() ? $query : $query->whereRaw('1=0');
+        $user = Auth::user();
+
+        if (! $user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $stationActiveId = request()->attributes->get('station_active_id');
+
+        if ($user->role === 'super_admin' && ! $stationActiveId) {
+            return $query;
+        }
+
+        if ($stationActiveId) {
+            return $query->where('id_station', $stationActiveId);
+        }
+
+        return $query->whereRaw('1 = 0');
     }
 
     /**
@@ -49,6 +67,11 @@ class OperationCharge extends Model
      * RELATIONS
      * ===================================
      */
+    public function station()
+    {
+        return $this->belongsTo(Station::class, 'id_station');
+    }
+
     public function chargeCategory()
     {
         return $this->belongsTo(ChargeCategory::class, 'id_charge_category');

@@ -12,7 +12,8 @@ class OperationChargeCollection extends ResourceCollection
 
             return [
 
-                'id' => $item->id,
+                'id'      => $item->id,
+                'station' => $item->station?->libelle,
 
                 'categorie' => $item->chargeCategory?->libelle,
 

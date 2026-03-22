@@ -10,6 +10,7 @@ use Exception;
 class OperationChargeService
 {
     private array $with = [
+        'station:id,libelle',
         'chargeCategory:id,libelle',
         'compte:id,libelle',
         'createdBy:id,name',
@@ -66,6 +67,17 @@ class OperationChargeService
     public function store(array $data)
     {
         try {
+
+            $stationActiveId = request()->attributes->get('station_active_id');
+
+            if (! $stationActiveId) {
+                return response()->json([
+                    'status'  => 400,
+                    'message' => 'Aucune station active détectée.',
+                ], 400);
+            }
+
+            $data['id_station'] = $stationActiveId;
 
             $item = OperationCharge::create($data);
 
