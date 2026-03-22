@@ -9,12 +9,8 @@ use App\Modules\Vente\Controllers\JaugeageController;
 use App\Modules\Vente\Controllers\LigneVenteController;
 use App\Modules\Vente\Controllers\PaiementController;
 use App\Modules\Vente\Controllers\PerteCuveController;
-use App\Modules\Vente\Controllers\ProduitController1;
 
-use App\Modules\Vente\Controllers\ServiceController;
-use App\Modules\Vente\Controllers\ValidationVenteController;
-use App\Modules\Vente\Controllers\VenteLitreController;
-use App\Modules\Vente\Controllers\VenteProduitServiceController;
+
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['station.db', 'auth:sanctum', 'active.st'])->prefix('v1/vente')->group(function () {

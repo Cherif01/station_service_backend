@@ -108,7 +108,7 @@ class JaugeageCuveService
             DB::commit();
 
             return response()->json([
-                'status'  => 201,
+                'status'  => 200,
                 'message' => 'Jaugeage enregistré avec succès.',
                 'data'    => new JaugeageCuveResource(
                     $jaugeage->load(['cuve', 'station', 'createdBy', 'modifiedBy'])
