@@ -87,7 +87,7 @@ class JaugeageCuveService
                 ], 422);
             }
 
-            $cuve = Cuve::visible()->find($data['id_cuve']);
+            $cuve = Cuve::find($data['id_cuve']);
 
             if (! $cuve) {
 
