@@ -413,6 +413,7 @@ class CuveService
                     if (is_null($stockJauge)) {
                         $stockJauge = JaugeageCuve::visible()
                             ->where('id_cuve', $cuve->id)
+                            ->where('created_at', '<=', $current->copy()->endOfDay())
                             ->orderByDesc('created_at')
                             ->value('volume_mesure') ?? 0;
                     }
