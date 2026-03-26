@@ -369,7 +369,15 @@ class CuveService
                         ->where('id_cuve', $cuve->id)
                         ->whereDate('created_at', $date)
                         ->orderBy('created_at')
-                        ->value('volume_mesure') ?? 0;
+                        ->value('volume_mesure');
+
+                    if (is_null($stockDebut)) {
+                        $stockDebut = JaugeageCuve::visible()
+                            ->where('id_cuve', $cuve->id)
+                            ->where('created_at', '<', $current->copy()->startOfDay())
+                            ->orderByDesc('created_at')
+                            ->value('volume_mesure') ?? 0;
+                    }
 
                     $entrees = ApprovisionnementCuve::visible()
                         ->where('id_cuve', $cuve->id)
@@ -400,7 +408,14 @@ class CuveService
                         ->where('id_cuve', $cuve->id)
                         ->whereDate('created_at', $date)
                         ->orderByDesc('created_at')
-                        ->value('volume_mesure') ?? 0;
+                        ->value('volume_mesure');
+
+                    if (is_null($stockJauge)) {
+                        $stockJauge = JaugeageCuve::visible()
+                            ->where('id_cuve', $cuve->id)
+                            ->orderByDesc('created_at')
+                            ->value('volume_mesure') ?? 0;
+                    }
 
                     $ecart = $stockJauge - $stockFinTheorique;
 
