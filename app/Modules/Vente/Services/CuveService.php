@@ -402,7 +402,7 @@ class CuveService
                         ->whereDate('created_at', $date)
                         ->sum('quantite_perdue');
 
-                    $stockFinTheorique = $stockDebut + $entrees + $retourCuve - $sorties - $perteCuve;
+                    $stockFinTheorique = $entrees + $retourCuve - $sorties - $perteCuve;
 
                     $stockJauge = JaugeageCuve::visible()
                         ->where('id_cuve', $cuve->id)
@@ -417,7 +417,7 @@ class CuveService
                             ->value('volume_mesure') ?? 0;
                     }
 
-                    $ecart = $stockJauge - $stockFinTheorique;
+                    $ecart = $stockJauge - ($stockDebut + $stockFinTheorique);
 
                     $lignesCuves[] = [
                         'carburant'       => [
