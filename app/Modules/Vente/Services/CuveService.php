@@ -5,6 +5,7 @@ use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Vente\Models\Cuve;
 use App\Modules\Vente\Models\JaugeageCuve;
 use App\Modules\Vente\Models\LigneVente;
+use App\Modules\Vente\Models\PerteCuve;
 use App\Modules\Vente\Resources\CuveResource;
 use Carbon\Carbon;
 use Exception;
@@ -388,7 +389,12 @@ class CuveService
                         ->where('status', true)
                         ->sum('qte_vendu');
 
-                    $stockFinTheorique = $stockDebut + $entrees + $retourCuve - $sorties;
+                    $perteCuve = PerteCuve::visible()
+                        ->where('id_cuve', $cuve->id)
+                        ->whereDate('created_at', $date)
+                        ->sum('quantite_perdue');
+
+                    $stockFinTheorique = $stockDebut + $entrees + $retourCuve - $sorties - $perteCuve;
 
                     $stockJauge = JaugeageCuve::visible()
                         ->where('id_cuve', $cuve->id)
@@ -408,6 +414,7 @@ class CuveService
                         'entrees'         => (float) $entrees,
                         'retour_cuve'     => (float) $retourCuve,
                         'sorties'         => (float) $sorties,
+                        'perte_cuve'      => (float) $perteCuve,
                         'stock_theorique' => (float) $stockFinTheorique,
                         'stock_jauge'     => (float) $stockJauge,
                         'ecart'           => (float) $ecart,
