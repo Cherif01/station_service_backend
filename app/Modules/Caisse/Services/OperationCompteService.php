@@ -104,31 +104,80 @@ class OperationCompteService
         }
     }
 
+    // public function getAll()
+    // {
+    //     try {
+
+    //         $operations = OperationCompte::visible()
+    //             ->whereDoesntHave('typeOperation', function ($q) {
+    //                 $q->where('nature', 2);
+    //             })
+    //             ->with(['typeOperation', 'compte.station', 'createdBy'])
+    //             ->orderByDesc('created_at')
+    //             ->get();
+
+    //         return response()->json([
+    //             'status' => 200,
+    //             'data'   => OperationCompteResource::collection($operations),
+    //         ], 200);
+
+    //     } catch (Throwable $e) {
+
+    //         return response()->json([
+    //             'status'  => 500,
+    //             'message' => 'Erreur lors de la récupération des opérations.',
+    //         ], 500);
+    //     }
+    // }
+
     public function getAll()
-    {
-        try {
+{
+    try {
 
-            $operations = OperationCompte::visible()
-                ->whereDoesntHave('typeOperation', function ($q) {
-                    $q->where('nature', 2);
-                })
-                ->with(['typeOperation', 'compte.station', 'createdBy'])
-                ->orderByDesc('created_at')
-                ->get();
+        $operations = OperationCompte::visible()
+            ->whereDoesntHave('typeOperation', function ($q) {
+                $q->where('nature', 2);
+            })
+            ->with([
+                'typeOperation',
+                'compte.station',
+                'source.station',
+                'destination.station',
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->get();
 
-            return response()->json([
-                'status' => 200,
-                'data'   => OperationCompteResource::collection($operations),
-            ], 200);
+        $paiements = Paiement::visible()
+            ->with([
+                'creance.client',
+                'compte.station',
+                'createdBy',
+                'modifiedBy',
+            ])
+            ->get();
 
-        } catch (Throwable $e) {
+        $data = $operations
+            ->concat($paiements)
+            ->sortByDesc(function ($item) {
+                return $item->created_at;
+            })
+            ->values();
 
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la récupération des opérations.',
-            ], 500);
-        }
+        return response()->json([
+            'status' => 200,
+            'data'   => OperationCompteResource::collection($data),
+        ], 200);
+
+    } catch (Throwable $e) {
+
+        return response()->json([
+            'status'  => 500,
+            'message' => 'Erreur lors de la récupération des opérations.',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
 
     public function getAllByPeriode(array $data)
     {
