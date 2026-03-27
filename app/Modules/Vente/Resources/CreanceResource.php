@@ -24,6 +24,11 @@ class CreanceResource extends JsonResource
             // =============================
             'id'          => $this->id,
             'commentaire' => $this->commentaire,
+            'quantite' => $this->qte,
+            'prix_unitaire' => $this->prix_unitaire,
+            
+
+
 
             // =============================
             // 🔹 CLIENT
