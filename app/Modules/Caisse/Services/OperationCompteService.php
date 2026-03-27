@@ -153,7 +153,7 @@ class OperationCompteService
                 'creance.client',
                 'compte.station',
                 'createdBy',
-                'modifiedBy',
+                
             ])
             ->get();
 
