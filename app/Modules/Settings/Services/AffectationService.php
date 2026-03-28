@@ -5,7 +5,6 @@ use App\Modules\Administration\Models\User;
 use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Models\Pompe;
 use App\Modules\Settings\Resources\AffectationResource;
-use App\Modules\Vente\Models\Cuve;
 use App\Modules\Vente\Models\LigneVente;
 use Exception;
 use Illuminate\Support\Facades\DB;
@@ -265,9 +264,8 @@ public function store(array $data)
          * 4. CONTRÔLE RÔLE
          * =================================================
          */
-        if ($user->role !== 'pompiste') {
-            $data['id_pompe'] = null;
-            $data['id_cuve']  = null;
+        if ($user->role !== ‘pompiste’) {
+            $data[‘id_pompe’] = null;
         }
 
         /**
@@ -275,49 +273,36 @@ public function store(array $data)
          * 5. CONTRÔLES SPÉCIFIQUES POMPISTE
          * =================================================
          */
-        if ($user->role === 'pompiste') {
+        if ($user->role === ‘pompiste’) {
 
-            if (empty($data['id_pompe']) || empty($data['id_cuve'])) {
+            if (empty($data[‘id_pompe’])) {
                 DB::rollBack();
 
                 return response()->json([
-                    'status'  => 422,
-                    'message' => 'id_pompe et id_cuve sont obligatoires pour un pompiste.',
+                    ‘status’  => 422,
+                    ‘message’ => ‘id_pompe est obligatoire pour un pompiste.’,
                 ], 422);
             }
 
             // 🔒 Une pompe = un seul pompiste actif
-            if (Affectation::where('id_pompe', $data['id_pompe'])->where('status', true)->exists()) {
+            if (Affectation::where(‘id_pompe’, $data[‘id_pompe’])->where(‘status’, true)->exists()) {
                 DB::rollBack();
 
                 return response()->json([
-                    'status'  => 409,
-                    'message' => 'Cette pompe est déjà affectée à un autre pompiste.',
+                    ‘status’  => 409,
+                    ‘message’ => ‘Cette pompe est déjà affectée à un autre pompiste.’,
                 ], 409);
             }
 
-            $pompe = Pompe::findOrFail($data['id_pompe']);
-            $cuve  = Cuve::findOrFail($data['id_cuve']);
+            $pompe = Pompe::findOrFail($data[‘id_pompe’]);
 
             // 🔒 Cohérence station
-            if ($pompe->id_station !== (int) $data['id_station'] ||
-                $cuve->id_station  !== (int) $data['id_station']) {
-
+            if ($pompe->id_station !== (int) $data[‘id_station’]) {
                 DB::rollBack();
 
                 return response()->json([
-                    'status'  => 422,
-                    'message' => 'La pompe ou la cuve n’appartient pas à la station.',
-                ], 422);
-            }
-
-            // 🔒 Cohérence carburant (CUVE = vérité)
-            if ($cuve->type_cuve !== $pompe->type_pompe) {
-                DB::rollBack();
-
-                return response()->json([
-                    'status'  => 422,
-                    'message' => 'Incohérence carburant : la pompe ne correspond pas au type de la cuve.',
+                    ‘status’  => 422,
+                    ‘message’ => ‘La pompe n\’appartient pas à cette station.’,
                 ], 422);
             }
         }
@@ -331,7 +316,6 @@ public function store(array $data)
             'id_user'    => $user->id,
             'id_station' => $data['id_station'],
             'id_pompe'   => $data['id_pompe'] ?? null,
-            'id_cuve'    => $data['id_cuve'] ?? null,
             'status'     => true,
         ]);
 
@@ -353,7 +337,6 @@ public function store(array $data)
 
             LigneVente::create([
                 'id_station'     => $data['id_station'],
-                'id_cuve'        => $data['id_cuve'],
                 'id_affectation' => $affectation->id,
                 'index_debut'    => $data['index_debut'],
                 'status'         => false,

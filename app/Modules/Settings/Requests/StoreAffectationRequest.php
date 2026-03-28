@@ -16,13 +16,11 @@ class StoreAffectationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_pompe'     => 'nullable|exists:pompes,id',
-            'id_user'  => 'required|exists:users,id',
-            'id_station'   => 'required|exists:stations,id',
-            'id_cuve'   => 'nullable|exists:cuves,id',
-            'index_debut' =>'nullable|numeric|min:0',
-
-            'status'       => 'nullable|boolean',
+            'id_user'     => 'required|exists:users,id',
+            'id_station'  => 'required|exists:stations,id',
+            'id_pompe'    => 'nullable|exists:pompes,id',
+            'index_debut' => 'nullable|numeric|min:0',
+            'status'      => 'nullable|boolean',
         ];
     }
 

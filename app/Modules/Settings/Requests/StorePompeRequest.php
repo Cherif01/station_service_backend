@@ -17,7 +17,7 @@ class StorePompeRequest extends FormRequest
     {
         return [
             'libelle'        => 'required|string|max:150',
-            'reference'      => 'nullable|string|max:50|unique:pompes,reference',
+            'reference'      => 'nullable|string|max:50',
             'type_pompe'     => 'required|in:essence,gasoil,gazoil',
             'index_initial'  => 'nullable|numeric|min:0',
             'id_station'     => 'required|exists:stations,id',
