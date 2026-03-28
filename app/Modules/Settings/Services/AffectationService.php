@@ -203,7 +203,7 @@ class AffectationService
 
 //         return response()->json([
 //             'status'  => 500,
-//             'message' => 'Erreur lors de la création de l’affectation.',
+//             ‘message’ => "Erreur lors de la creation de l’affectation.",
 //             'error'   => $e->getMessage(),
 //         ]);
 //     }
@@ -227,7 +227,7 @@ public function store(array $data)
          * 2. COHÉRENCE STATION UTILISATEUR
          * =================================================
          */
-        if (! empty($user->id_station)) {
+        if (!empty($user->id_station)) {
 
             if ((int) $user->id_station !== (int) $data['id_station']) {
                 DB::rollBack();
@@ -237,7 +237,6 @@ public function store(array $data)
                     'message' => 'Incohérence : cet utilisateur appartient déjà à une autre station.',
                 ], 422);
             }
-
         } else {
 
             $user->update([
@@ -264,8 +263,8 @@ public function store(array $data)
          * 4. CONTRÔLE RÔLE
          * =================================================
          */
-        if ($user->role !== ‘pompiste’) {
-            $data[‘id_pompe’] = null;
+        if ($user->role !== 'pompiste') {
+            $data['id_pompe'] = null;
         }
 
         /**
@@ -273,36 +272,36 @@ public function store(array $data)
          * 5. CONTRÔLES SPÉCIFIQUES POMPISTE
          * =================================================
          */
-        if ($user->role === ‘pompiste’) {
+        if ($user->role === 'pompiste') {
 
-            if (empty($data[‘id_pompe’])) {
+            if (empty($data['id_pompe'])) {
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 422,
-                    ‘message’ => ‘id_pompe est obligatoire pour un pompiste.’,
+                    'status'  => 422,
+                    'message' => 'id_pompe est obligatoire pour un pompiste.',
                 ], 422);
             }
 
-            // 🔒 Une pompe = un seul pompiste actif
-            if (Affectation::where(‘id_pompe’, $data[‘id_pompe’])->where(‘status’, true)->exists()) {
+            // Une pompe = un seul pompiste actif
+            if (Affectation::where('id_pompe', $data['id_pompe'])->where('status', true)->exists()) {
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 409,
-                    ‘message’ => ‘Cette pompe est déjà affectée à un autre pompiste.’,
+                    'status'  => 409,
+                    'message' => 'Cette pompe est deja affectee a un autre pompiste.',
                 ], 409);
             }
 
-            $pompe = Pompe::findOrFail($data[‘id_pompe’]);
+            $pompe = Pompe::findOrFail($data['id_pompe']);
 
-            // 🔒 Cohérence station
-            if ($pompe->id_station !== (int) $data[‘id_station’]) {
+            // Cohérence station
+            if ((int) $pompe->id_station !== (int) $data['id_station']) {
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 422,
-                    ‘message’ => ‘La pompe n\’appartient pas à cette station.’,
+                    'status'  => 422,
+                    'message' => "La pompe n'appartient pas a cette station.",
                 ], 422);
             }
         }
@@ -326,7 +325,7 @@ public function store(array $data)
          */
         if ($user->role === 'pompiste') {
 
-            if (! isset($data['index_debut'])) {
+            if (!isset($data['index_debut'])) {
                 DB::rollBack();
 
                 return response()->json([
@@ -356,7 +355,7 @@ public function store(array $data)
 
         return response()->json([
             'status'  => 500,
-            'message' => 'Erreur lors de la création de l’affectation.',
+            'message' => "Erreur lors de la création de l'affectation.",
             'error'   => $e->getMessage(),
         ], 500);
     }
