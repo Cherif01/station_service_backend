@@ -74,17 +74,6 @@ class User extends Authenticatable
 
         switch ($auth->role) {
             case 'super_admin':
-
-                if ($activeStationId) {
-                    return $query->where(function (Builder $q) use ($activeStationId) {
-                        $q->where('id_station', $activeStationId)
-                            ->orWhereHas('affectations', function (Builder $qa) use ($activeStationId) {
-                                $qa->where('id_station', $activeStationId)
-                                    ->where('status', true);
-                            });
-                    });
-                }
-
                 return $query;
 
             case 'admin':
