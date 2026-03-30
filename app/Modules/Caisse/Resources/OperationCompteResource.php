@@ -2,6 +2,7 @@
 
 namespace App\Modules\Caisse\Resources;
 
+use App\Modules\Caisse\Models\Compte;
 use App\Modules\Caisse\Models\OperationCompte;
 use App\Modules\Vente\Models\Creance;
 use App\Modules\Vente\Models\Paiement;
@@ -122,6 +123,9 @@ class OperationCompteResource extends JsonResource
         }
 
         if ($this->resource instanceof Creance) {
+
+            $compte = Compte::where('id_station', $this->id_station)->with('station')->first();
+
             return [
                 'id'          => $this->id,
                 'reference'   => 'CREANCE-' . $this->id,
@@ -129,17 +133,25 @@ class OperationCompteResource extends JsonResource
                 'status'      => true,
                 'commentaire' => $this->commentaire ?? (
                     $this->relationLoaded('client') && $this->client
-                        ? 'Créance - ' . $this->client->nom_complet
-                        : 'Créance'
+                        ? 'Creance - ' . $this->client->nom_complet
+                        : 'Creance'
                 ),
 
                 'type_operation' => [
                     'id'      => 0,
-                    'libelle' => 'Créance',
+                    'libelle' => 'Creance',
                     'nature'  => 0,
                 ],
 
-                'compte'      => null,
+                'compte' => $compte ? [
+                    'id'      => $compte->id,
+                    'libelle' => $compte->libelle,
+                    'station' => $compte->station ? [
+                        'id'      => $compte->station->id,
+                        'libelle' => $compte->station->libelle,
+                    ] : null,
+                ] : null,
+
                 'source'      => null,
                 'destination' => null,
 
