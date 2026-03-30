@@ -393,7 +393,7 @@ public function store(array $data)
 
             return response()->json([
                 'status'  => 500,
-                'message' => 'Erreur lors de la modification de l’affectation.',
+                ‘message’ => "Erreur lors de la modification de l’affectation.",
                 'error'   => $e->getMessage(),
             ]);
         }

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Caisse\Resources;
 
+use App\Modules\Vente\Models\Creance;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -45,8 +46,9 @@ class CompteResource extends JsonResource
             // =============================================
             // 🔹 SOLDES
             // =============================================
-            'solde_initial' => (float) $this->solde_initial,
-            'solde_actuel'  => (float) $this->solde_actuel,
+            'solde_initial'  => (float) $this->solde_initial,
+            'total_creances' => (float) Creance::where('id_station', $this->id_station)->sum('montant'),
+            'solde_actuel'   => (float) $this->solde_actuel,
 
             // =============================================
             // 🔹 AUDIT

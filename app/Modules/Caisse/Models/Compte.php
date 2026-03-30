@@ -3,6 +3,7 @@ namespace App\Modules\Caisse\Models;
 
 use App\Modules\Administration\Models\User;
 use App\Modules\Settings\Models\Station;
+use App\Modules\Vente\Models\Creance;
 use App\Modules\Vente\Models\Paiement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -192,7 +193,7 @@ class Compte extends Model
 
         /**
          * =============================
-         * 🔹 PAIEMENTS CRÉANCES
+         * 🔹 PAIEMENTS CRÉANCES (entrées)
          * liés directement à ce compte
          * =============================
          */
@@ -200,6 +201,17 @@ class Compte extends Model
             ->sum('montant_payer');
 
         $solde += (float) $totalPaiements;
+
+        /**
+         * =============================
+         * 🔹 CRÉANCES (sorties)
+         * ventes à crédit = cash non encaissé
+         * =============================
+         */
+        $totalCreances = Creance::where('id_station', $this->id_station)
+            ->sum('montant');
+
+        $solde -= (float) $totalCreances;
 
         return round($solde, 2);
     }

@@ -3,6 +3,7 @@
 namespace App\Modules\Caisse\Resources;
 
 use App\Modules\Caisse\Models\OperationCompte;
+use App\Modules\Vente\Models\Creance;
 use App\Modules\Vente\Models\Paiement;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -114,6 +115,36 @@ class OperationCompteResource extends JsonResource
 
                 'created_by' => $this->createdBy?->name,
                 'modify_by'  => $this->modifiedBy?->name,
+
+                'created_at' => $this->created_at?->toDateTimeString(),
+                'updated_at' => $this->updated_at?->toDateTimeString(),
+            ];
+        }
+
+        if ($this->resource instanceof Creance) {
+            return [
+                'id'          => $this->id,
+                'reference'   => 'CREANCE-' . $this->id,
+                'montant'     => (float) $this->montant,
+                'status'      => true,
+                'commentaire' => $this->commentaire ?? (
+                    $this->relationLoaded('client') && $this->client
+                        ? 'Créance - ' . $this->client->nom_complet
+                        : 'Créance'
+                ),
+
+                'type_operation' => [
+                    'id'      => 0,
+                    'libelle' => 'Créance',
+                    'nature'  => 0,
+                ],
+
+                'compte'      => null,
+                'source'      => null,
+                'destination' => null,
+
+                'created_by' => $this->createdBy?->name,
+                'modify_by'  => null,
 
                 'created_at' => $this->created_at?->toDateTimeString(),
                 'updated_at' => $this->updated_at?->toDateTimeString(),

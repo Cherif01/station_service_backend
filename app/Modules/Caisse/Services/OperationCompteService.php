@@ -8,6 +8,7 @@ use App\Modules\Caisse\Models\OperationCompte;
 use App\Modules\Caisse\Models\TypeOperation;
 use App\Modules\Caisse\Resources\OperationCompteResource;
 use App\Modules\Caisse\Resources\OperationTransfertResource;
+use App\Modules\Vente\Models\Creance;
 use App\Modules\Vente\Models\LigneVente;
 use App\Modules\Vente\Models\Paiement;
 use Carbon\Carbon;
@@ -153,15 +154,17 @@ class OperationCompteService
                 'creance.client',
                 'compte.station',
                 'createdBy',
-                
             ])
+            ->get();
+
+        $creances = Creance::visible()
+            ->with(['client', 'createdBy'])
             ->get();
 
         $data = $operations
             ->concat($paiements)
-            ->sortByDesc(function ($item) {
-                return $item->created_at;
-            })
+            ->concat($creances)
+            ->sortByDesc(fn ($item) => $item->created_at)
             ->values();
 
         return response()->json([
