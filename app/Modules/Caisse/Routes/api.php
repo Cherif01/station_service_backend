@@ -2,9 +2,11 @@
 
 use App\Modules\Caisse\Controllers\ChargeCategoryController;
 use App\Modules\Caisse\Controllers\CompteController;
+use App\Modules\Caisse\Controllers\CompteDirectionController;
 use App\Modules\Caisse\Controllers\OperationChargeController;
 use App\Modules\Caisse\Controllers\OperationCompteController;
 use App\Modules\Caisse\Controllers\TypeOperationController;
+use App\Modules\Caisse\Controllers\VersementDirectionController;
 use Illuminate\Support\Facades\Route;
 
 // Define API routes for Caisse module here
@@ -61,5 +63,38 @@ Route::middleware(['station.db', 'auth:sanctum', 'active.st'])
         
 
 Route::get('resume-mensuel', [OperationCompteController::class, 'resumeMensuel']);
+
+        // =============================================
+        // COMPTES DIRECTION
+        // =============================================
+        Route::apiResource('comptes-direction', CompteDirectionController::class);
+
+        // =============================================
+        // VERSEMENTS DIRECTION
+        // =============================================
+        Route::get(
+            'versements-direction',
+            [VersementDirectionController::class, 'index']
+        );
+
+        Route::get(
+            'versements-direction/periode',
+            [VersementDirectionController::class, 'byPeriode']
+        );
+
+        Route::post(
+            'versements-direction/initier',
+            [VersementDirectionController::class, 'initier']
+        );
+
+        Route::post(
+            'versements-direction/confirmer',
+            [VersementDirectionController::class, 'confirmer']
+        );
+
+        Route::post(
+            'versements-direction/annuler',
+            [VersementDirectionController::class, 'annuler']
+        );
 
     });

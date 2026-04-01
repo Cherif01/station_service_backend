@@ -16,10 +16,12 @@ class OperationCompte extends Model
         'id_compte',
         'id_source',
         'id_destination',
+        'id_compte_direction',
         'id_type_operation',
         'montant',
         'reference',
         'commentaire',
+        'mode',
         'status',
         'created_by',
         'modify_by',
@@ -229,6 +231,11 @@ class OperationCompte extends Model
     public function destination(): BelongsTo
     {
         return $this->belongsTo(Compte::class, 'id_destination');
+    }
+
+    public function compteDirection(): BelongsTo
+    {
+        return $this->belongsTo(CompteDirection::class, 'id_compte_direction');
     }
 
     public function typeOperation(): BelongsTo
