@@ -7,7 +7,7 @@ use App\Modules\Caisse\Models\CompteDirection;
 use App\Modules\Caisse\Models\OperationCompte;
 use App\Modules\Caisse\Models\TypeOperation;
 use App\Modules\Caisse\Resources\VersementDirectionResource;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -100,7 +100,7 @@ class VersementDirectionService
 
         try {
 
-            $user = auth()->user();
+            $user = Auth::user();
 
             // 🔒 Seuls les rôles pouvant initier un versement
             if (! in_array($user->role, ['gerant', 'superviseur', 'admin'])) {
@@ -179,10 +179,10 @@ class VersementDirectionService
             DB::commit();
 
             return response()->json([
-                'status'    => 201,
+                'status'    => 200,
                 'message'   => 'Versement initié, en attente de validation par la Direction.',
                 'reference' => $versement->reference,
-            ], 201);
+            ], 200);
 
         } catch (Throwable $e) {
 
@@ -207,7 +207,7 @@ class VersementDirectionService
 
         try {
 
-            $user = auth()->user();
+            $user = Auth::user();
 
             if (! in_array($user->role, ['admin', 'super_admin'])) {
                 DB::rollBack();
@@ -272,7 +272,7 @@ class VersementDirectionService
 
         try {
 
-            $user = auth()->user();
+            $user = Auth::user();
 
             if (! in_array($user->role, ['admin', 'super_admin'])) {
                 DB::rollBack();
@@ -324,7 +324,7 @@ class VersementDirectionService
      */
     private function buildVisibleQuery()
     {
-        $user  = auth()->user();
+        $user  = Auth::user();
         $query = OperationCompte::whereNotNull('id_compte_direction');
 
         // admin / super_admin → tous les versements direction (toutes stations)
