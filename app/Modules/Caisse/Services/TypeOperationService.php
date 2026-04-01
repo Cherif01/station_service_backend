@@ -33,8 +33,8 @@ class TypeOperationService
                     'updated_at'  => now(),
                 ],
                 [
-                    'libelle'     => 'Transfert inter-station',
-                    'commentaire' => 'Transfert de fonds entre stations',
+                    'libelle'     => 'Versement / Transfert de fonds',
+                    'commentaire' => 'Versement vers la Direction ou transfert de fonds',
                     'nature'      => 2,
                     'created_at'  => now(),
                     'updated_at'  => now(),
