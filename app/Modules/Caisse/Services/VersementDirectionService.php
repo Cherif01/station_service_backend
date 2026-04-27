@@ -111,16 +111,32 @@ class VersementDirectionService
                 ], 403);
             }
 
-            $source          = Compte::lockForUpdate()->find($data['id_source']);
-            $compteDirection = CompteDirection::find($data['id_compte_direction']);
+            // Résolution automatique de la station active
+            $stationId = request()->attributes->get('station_active_id')
+                ?? $user->affectations()->where('status', true)->latest('created_at')->value('id_station');
+
+            if (! $stationId) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 403,
+                    'message' => 'Aucune station active trouvée pour cet utilisateur.',
+                ], 403);
+            }
+
+            // Récupération automatique du compte de la station
+            $source = Compte::lockForUpdate()
+                ->where('id_station', $stationId)
+                ->first();
 
             if (! $source) {
                 DB::rollBack();
                 return response()->json([
                     'status'  => 404,
-                    'message' => 'Compte source introuvable.',
+                    'message' => 'Aucun compte trouvé pour cette station.',
                 ], 404);
             }
+
+            $compteDirection = CompteDirection::find($data['id_compte_direction']);
 
             if (! $compteDirection) {
                 DB::rollBack();
@@ -128,20 +144,6 @@ class VersementDirectionService
                     'status'  => 404,
                     'message' => 'Compte direction introuvable.',
                 ], 404);
-            }
-
-            // 🔒 Le gérant / superviseur ne peut verser que depuis sa propre station
-            if (in_array($user->role, ['gerant', 'superviseur'])) {
-                $stationId = request()->attributes->get('station_active_id')
-                    ?? $user->affectations()->where('status', true)->latest('created_at')->value('id_station');
-
-                if ((int) $source->id_station !== (int) $stationId) {
-                    DB::rollBack();
-                    return response()->json([
-                        'status'  => 403,
-                        'message' => 'Vous ne pouvez verser que depuis le compte de votre station.',
-                    ], 403);
-                }
             }
 
             $montant = (float) $data['montant'];
@@ -162,7 +164,15 @@ class VersementDirectionService
                 ], 409);
             }
 
-            $type = TypeOperation::where('nature', 2)->firstOrFail();
+            $type = TypeOperation::where('nature', 2)->first();
+
+            if (! $type) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 500,
+                    'message' => 'Type opération "Versement/Transfert" non configuré. Contactez l\'administrateur.',
+                ], 500);
+            }
 
             $versement = OperationCompte::create([
                 'id_compte'           => $source->id,

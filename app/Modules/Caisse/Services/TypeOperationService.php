@@ -33,6 +33,9 @@ class TypeOperationService
                     'updated_at'  => now(),
                 ],
                 [
+                    // nature 2 couvre deux cas :
+                    // 1. Versement direction : gérant → Compte Direction (en attente → validé par admin)
+                    // 2. Transfert classique  : compte source → compte destination (même tenant)
                     'libelle'     => 'Versement / Transfert de fonds',
                     'commentaire' => 'Versement vers la Direction ou transfert de fonds',
                     'nature'      => 2,

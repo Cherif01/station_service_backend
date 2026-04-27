@@ -14,7 +14,6 @@ class StoreVersementDirectionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_source'           => ['required', 'integer', 'exists:comptes,id'],
             'id_compte_direction' => ['required', 'integer', 'exists:comptes_direction,id'],
             'montant'             => ['required', 'numeric', 'min:0.01'],
             'mode'                => ['required', 'in:banque,especes,virement,chéque'],
@@ -25,8 +24,6 @@ class StoreVersementDirectionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'id_source.required'           => 'Le compte source est obligatoire.',
-            'id_source.exists'             => 'Compte source introuvable.',
             'id_compte_direction.required' => 'Le compte direction est obligatoire.',
             'id_compte_direction.exists'   => 'Compte direction introuvable.',
             'montant.required'             => 'Le montant est obligatoire.',
