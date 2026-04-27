@@ -77,11 +77,6 @@ Route::get('resume-mensuel', [OperationCompteController::class, 'resumeMensuel']
             [VersementDirectionController::class, 'index']
         );
 
-        Route::get(
-            'versements-direction/periode',
-            [VersementDirectionController::class, 'byPeriode']
-        );
-
         Route::post(
             'versements-direction/initier',
             [VersementDirectionController::class, 'initier']

@@ -65,13 +65,11 @@ class OperationCompteService
 
                     $ventesQuery->where('id_station', $stationId);
 
-                    // Paiement → Creance → id_station
                     $creancesQuery->whereHas('creance', function ($q) use ($stationId) {
                         $q->where('id_station', $stationId);
                     });
 
-                    // OperationCharge n'a plus id_station (géré par super_admin)
-                    // les charges ne sont pas filtrées par station
+                    $chargesQuery->where('id_station', $stationId);
                 }
 
                 $ventesDirectes    = $ventesQuery->sum('montant');

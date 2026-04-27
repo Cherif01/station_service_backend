@@ -20,19 +20,24 @@ class VersementDirectionService
      * - admin / super_admin : tous les versements (toutes stations)
      * - gérant / superviseur : versements de leur station uniquement
      */
-    public function getAll()
+    public function getAll(array $data = [])
     {
         try {
 
-            $query = $this->buildVisibleQuery();
+            $dateDebut = ! empty($data['date_debut']) ? $data['date_debut'] : now()->toDateString();
+            $dateFin   = ! empty($data['date_fin'])   ? $data['date_fin']   : now()->toDateString();
 
-            $versements = $query
+            $versements = $this->buildVisibleQuery()
                 ->with([
                     'source.station',
                     'compteDirection',
                     'typeOperation',
                     'createdBy',
                     'modifiedBy',
+                ])
+                ->whereBetween('created_at', [
+                    $dateDebut . ' 00:00:00',
+                    $dateFin   . ' 23:59:59',
                 ])
                 ->orderByDesc('created_at')
                 ->get();
@@ -47,43 +52,6 @@ class VersementDirectionService
             return response()->json([
                 'status'  => 500,
                 'message' => 'Erreur lors de la récupération des versements.',
-                'error'   => $e->getMessage(),
-            ], 500);
-        }
-    }
-
-    public function getAllByPeriode(array $data)
-    {
-        try {
-
-            $query = $this->buildVisibleQuery()
-                ->with([
-                    'source.station',
-                    'compteDirection',
-                    'typeOperation',
-                    'createdBy',
-                    'modifiedBy',
-                ]);
-
-            if (! empty($data['date_debut']) && ! empty($data['date_fin'])) {
-                $query->whereBetween('created_at', [
-                    $data['date_debut'] . ' 00:00:00',
-                    $data['date_fin'] . ' 23:59:59',
-                ]);
-            }
-
-            return response()->json([
-                'status' => 200,
-                'data'   => VersementDirectionResource::collection(
-                    $query->orderByDesc('created_at')->get()
-                ),
-            ]);
-
-        } catch (Throwable $e) {
-
-            return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de la récupération des versements par période.',
                 'error'   => $e->getMessage(),
             ], 500);
         }

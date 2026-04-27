@@ -15,19 +15,11 @@ class VersementDirectionController extends Controller
     }
 
     /**
-     * Liste des versements direction (filtrée par rôle)
+     * Liste des versements direction — paramètres optionnels : date_debut, date_fin (défaut : aujourd'hui)
      */
-    public function index()
+    public function index(Request $request)
     {
-        return $this->service->getAll();
-    }
-
-    /**
-     * Liste filtrée par période
-     */
-    public function byPeriode(Request $request)
-    {
-        return $this->service->getAllByPeriode(
+        return $this->service->getAll(
             $request->only(['date_debut', 'date_fin'])
         );
     }
