@@ -99,7 +99,7 @@ class LigneVenteService
     }
     /**
      * =========================
-     * DÉTAIL D’UNE LIGNE
+     * DÉTAIL D'UNE LIGNE
      * =========================
      */
     public function getOne(int $id): JsonResponse
@@ -220,7 +220,7 @@ class LigneVenteService
     //              * ===============================
     //              * dernier index pompe
     //              * ===============================
-    //              */
+    //             */
     //             $indexData = $this->pompeService
     //                 ->getDernierIndexPourAffectation($pompe->id);
 
@@ -278,7 +278,7 @@ class LigneVenteService
 
     //         return response()->json([
     //             'status'  => 500,
-    //             'message' => 'Erreur lors de l’initialisation.',
+    //             'message' => 'Erreur lors de l\'initialisation.',
     //             'error'   => $e->getMessage(),
     //         ], 500);
     //     }
@@ -498,7 +498,7 @@ class LigneVenteService
              * QUANTITÉ VENDUE
              * ==========================================
              */
-            $qteVendu = ($indexFin - $indexDebut) - $retourCuve;
+            $qteVendu = round(($indexFin - $indexDebut) - $retourCuve, 3);
 
             if ($qteVendu <= 0) {
 
@@ -527,7 +527,7 @@ class LigneVenteService
                 ], 404);
             }
 
-            $puVente = (float) $cuve->pu_vente;
+            $puVente = (float) ($cuve->pu_vente ?? 0);
 
             if ($puVente <= 0) {
 
@@ -567,7 +567,7 @@ class LigneVenteService
                     ->where('created_at', '>=', $dateRef)
                     ->sum('quantite_perdue');
 
-                $stockDispo = $stockRef + $totalAppros - $totalVentes - $totalPertes;
+                $stockDispo = round($stockRef + $totalAppros - $totalVentes - $totalPertes, 3);
 
                 if ($stockDispo < $qteVendu) {
                     DB::rollBack();
@@ -618,6 +618,16 @@ class LigneVenteService
              * FERMETURE AFFECTATION + CONFIRMATION POMPISTE
              * ==========================================
              */
+            if (empty($data['id_pompiste'])) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    'status'  => 422,
+                    'message' => 'Le pompiste est obligatoire pour clôturer la vente.',
+                ], 422);
+            }
+
             if ($item->id_affectation) {
 
                 $affectation = Affectation::where('id', $item->id_affectation)
@@ -700,8 +710,8 @@ class LigneVenteService
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 404,
-                    ‘message’ => ‘Ligne de vente introuvable.’,
+                    'status'  => 404,
+                    'message' => 'Ligne de vente introuvable.',
                 ], 404);
             }
 
@@ -713,25 +723,25 @@ class LigneVenteService
                 DB::commit();
 
                 return response()->json([
-                    ‘status’  => 200,
-                    ‘message’ => ‘Vente non validée supprimée avec succès.’,
+                    'status'  => 200,
+                    'message' => 'Vente non validée supprimée avec succès.',
                 ], 200);
             }
 
             // Vente validée : réservé aux admin / super_admin
             $user = Auth::user();
 
-            if (! in_array($user->role, [‘admin’, ‘super_admin’])) {
+            if (! in_array($user->role, ['admin', 'super_admin'])) {
 
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 403,
-                    ‘message’ => ‘Seul un administrateur peut annuler une vente validée.’,
+                    'status'  => 403,
+                    'message' => 'Seul un administrateur peut annuler une vente validée.',
                 ], 403);
             }
 
-            $validation = ValidationVente::where(‘id_vente’, $item->id)
+            $validation = ValidationVente::where('id_vente', $item->id)
                 ->lockForUpdate()
                 ->first();
 
@@ -740,12 +750,12 @@ class LigneVenteService
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 409,
-                    ‘message’ => ‘Validation de vente introuvable.’,
+                    'status'  => 409,
+                    'message' => 'Validation de vente introuvable.',
                 ], 409);
             }
 
-            $operationVente = OperationCompte::where(‘reference’, ‘VENTE-’ . $item->id)
+            $operationVente = OperationCompte::where('reference', 'VENTE-' . $item->id)
                 ->lockForUpdate()
                 ->first();
 
@@ -754,58 +764,63 @@ class LigneVenteService
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 409,
-                    ‘message’ => ‘Opération comptable de la vente introuvable.’,
+                    'status'  => 409,
+                    'message' => 'Opération comptable de la vente introuvable.',
                 ], 409);
             }
 
-            $typeAnnulation = TypeOperation::where(‘nature’, 0)->first();
+            $typeAnnulation = TypeOperation::where('nature', 0)->first();
 
             if (! $typeAnnulation) {
 
                 DB::rollBack();
 
                 return response()->json([
-                    ‘status’  => 500,
-                    ‘message’ => ‘Type opération "Sortie" non configuré. Contactez l\’administrateur.’,
+                    'status'  => 500,
+                    'message' => "Type operation Sortie non configure. Contactez l'administrateur.",
                 ], 500);
             }
 
             OperationCompte::create([
-                ‘id_compte’         => $operationVente->id_compte,
-                ‘id_type_operation’ => $typeAnnulation->id,
-                ‘montant’           => $operationVente->montant,
-                ‘reference’         => ‘ANNUL-VENTE-’ . $item->id,
-                ‘commentaire’       => ‘Annulation vente carburant’,
+                'id_compte'         => $operationVente->id_compte,
+                'id_type_operation' => $typeAnnulation->id,
+                'montant'           => $operationVente->montant,
+                'reference'         => 'ANNUL-VENTE-' . $item->id . '-' . now()->timestamp,
+                'commentaire'       => 'Annulation vente carburant',
             ]);
 
-            $item->update([‘status’ => false]);
+            $item->update([
+                'status'      => false,
+                'index_fin'   => 0,
+                'retour_cuve' => 0,
+                'qte_vendu'   => 0,
+            ]);
 
-            $raison      = ! empty($data[‘raison’]) ? ‘ — Raison : ‘ . $data[‘raison’] : ‘’;
-            $annulePar   = $user->name ?? ‘Admin’;
+            $raison    = ! empty($data['raison']) ? ' - Raison : ' . $data['raison'] : '';
+            $annulePar = $user->name ?? 'Admin';
 
             $validation->update([
-                ‘commentaire’ => $validation->commentaire
-                    . "\n---\nVENTE ANNULÉE LE " . now()->format(‘d/m/Y H:i’)
-                    . ‘ par ‘ . $annulePar
+                'commentaire' => $validation->commentaire
+                    . "\n---\nVENTE ANNULÉE LE " . now()->format('d/m/Y H:i')
+                    . ' par ' . $annulePar
                     . $raison,
             ]);
 
-            // Rouvrir l’affectation pour permettre une re-saisie
-            $affectation = Affectation::find($item->id_affectation);
+            // Rouvrir l'affectation pour permettre une re-saisie
+            $affectation = Affectation::lockForUpdate()->find($item->id_affectation);
 
             if ($affectation) {
                 $affectation->update([
-                    ‘status’  => true,
-                    ‘id_user’ => null,
+                    'status'  => true,
+                    'id_user' => null,
                 ]);
             }
 
             DB::commit();
 
             return response()->json([
-                ‘status’  => 200,
-                ‘message’ => ‘Vente annulée avec succès.’,
+                'status'  => 200,
+                'message' => 'Vente annulée avec succès.',
             ], 200);
 
         } catch (Throwable $e) {
@@ -813,76 +828,74 @@ class LigneVenteService
             DB::rollBack();
 
             return response()->json([
-                ‘status’  => 500,
-                ‘message’ => ‘Erreur lors de l\’annulation de la vente.’,
-                ‘error’   => $e->getMessage(),
+                'status'  => 500,
+                'message' => "Erreur lors de l'annulation de la vente.",
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
 
     /**
- * =========================
- * VENTE JOURNALIÈRE PAR POMPE
- * (relevé jour par jour entre deux dates)
- * =========================
- */
-public function venteJournaliere(?string $dateDebut = null, ?string $dateFin = null): JsonResponse
-{
-    try {
+     * =========================
+     * VENTE JOURNALIÈRE PAR POMPE
+     * (relevé jour par jour entre deux dates)
+     * =========================
+     */
+    public function venteJournaliere(?string $dateDebut = null, ?string $dateFin = null): JsonResponse
+    {
+        try {
 
-        $debut = $dateDebut
-            ? Carbon::parse($dateDebut)->startOfDay()
-            : Carbon::today()->startOfDay();
+            $debut = $dateDebut
+                ? Carbon::parse($dateDebut)->startOfDay()
+                : Carbon::today()->startOfDay();
 
-        $fin = $dateFin
-            ? Carbon::parse($dateFin)->endOfDay()
-            : Carbon::today()->endOfDay();
+            $fin = $dateFin
+                ? Carbon::parse($dateFin)->endOfDay()
+                : Carbon::today()->endOfDay();
 
-        $data    = [];
-        $current = $debut->copy();
+            $data    = [];
+            $current = $debut->copy();
 
-        while ($current->lte($fin)) {
+            while ($current->lte($fin)) {
 
-            $date = $current->toDateString();
+                $date = $current->toDateString();
 
-            $lignes = LigneVente::visible()
-                ->with([
-                    'affectation.pompe.station',
-                    'affectation.user',
-                    'cuve',
-                    'createdBy',
-                    'modifiedBy',
-                ])
-                ->whereDate('created_at', $date)
-                ->where('status', true)
-                ->get();
+                $lignes = LigneVente::visible()
+                    ->with([
+                        'affectation.pompe.station',
+                        'affectation.user',
+                        'cuve',
+                        'createdBy',
+                        'modifiedBy',
+                    ])
+                    ->whereDate('created_at', $date)
+                    ->where('status', true)
+                    ->get();
 
-            $data[] = [
-                'date'          => $date,
-                'total_volume'  => (float) $lignes->sum('qte_vendu'),
-                'total_montant' => (float) $lignes->sum(fn($l) => $l->qte_vendu * $l->prix_unitaire),
-                'lignes'        => (new LigneVenteCollection($lignes))->toArray(request()),
-            ];
+                $data[] = [
+                    'date'          => $date,
+                    'total_volume'  => (float) $lignes->sum('qte_vendu'),
+                    'total_montant' => (float) $lignes->sum(fn($l) => $l->qte_vendu * $l->prix_unitaire),
+                    'lignes'        => (new LigneVenteCollection($lignes))->toArray(request()),
+                ];
 
-            $current->addDay();
+                $current->addDay();
+            }
+
+            return response()->json([
+                'status'     => 200,
+                'date_debut' => $debut->toDateString(),
+                'date_fin'   => $fin->toDateString(),
+                'data'       => $data,
+            ]);
+
+        } catch (\Throwable $e) {
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors du relevé journalier.',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'status'     => 200,
-            'date_debut' => $debut->toDateString(),
-            'date_fin'   => $fin->toDateString(),
-            'data'       => $data,
-        ]);
-
-    } catch (\Throwable $e) {
-
-        return response()->json([
-            'status'  => 500,
-            'message' => 'Erreur lors du relevé journalier.',
-            'error'   => $e->getMessage(),
-        ], 500);
     }
-}
-
-
 }
