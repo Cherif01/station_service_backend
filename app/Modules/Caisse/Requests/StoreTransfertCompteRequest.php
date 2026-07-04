@@ -17,7 +17,7 @@ class StoreTransfertCompteRequest extends FormRequest
     {
         return [
             'id_source'      => ['required', 'exists:comptes,id'],
-            'id_destination' => ['required', 'exists:comptes,id', 'different:id_compte_source'],
+            'id_destination' => ['required', 'exists:comptes,id', 'different:id_source'],
             'montant'               => ['required', 'numeric', 'gt:0'],
             'reference'             => ['nullable', 'string', 'max:100'],
             'commentaire'           => ['nullable', 'string', 'max:255'],

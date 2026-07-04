@@ -75,11 +75,20 @@ class CompteDirection extends Model
     {
         $solde = (float) $this->solde_initial;
 
-        $totalVersements = OperationCompte::where('id_compte_direction', $this->id)
+        // Versements reçus : stations → direction (id_source non null)
+        $recus = OperationCompte::where('id_compte_direction', $this->id)
             ->where('status', 'effectif')
+            ->whereNotNull('id_source')
             ->sum('montant');
 
-        $solde += (float) $totalVersements;
+        // Versements émis : direction → stations (id_destination non null)
+        $emis = OperationCompte::where('id_compte_direction', $this->id)
+            ->where('status', 'effectif')
+            ->whereNotNull('id_destination')
+            ->sum('montant');
+
+        $solde += (float) $recus;
+        $solde -= (float) $emis;
 
         return round($solde, 2);
     }

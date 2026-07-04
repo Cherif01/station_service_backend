@@ -8,6 +8,7 @@ use App\Modules\Caisse\Models\OperationCompte;
 use App\Modules\Caisse\Models\TypeOperation;
 use App\Modules\Caisse\Resources\OperationCompteResource;
 use App\Modules\Caisse\Resources\OperationTransfertResource;
+use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Vente\Models\Creance;
 use App\Modules\Vente\Models\LigneVente;
 use App\Modules\Vente\Models\Paiement;
@@ -29,62 +30,49 @@ class OperationCompteService
                 $start = Carbon::create($annee, $mois, 1)->startOfMonth();
                 $end   = Carbon::create($annee, $mois, 1)->endOfMonth();
 
-                /**
-                 * =========================
-                 * VENTES DIRECTES
-                 * =========================
-                 */
-                $ventesQuery = LigneVente::query()
-                    ->where('status', true)
-                    ->whereBetween('created_at', [$start, $end]);
+                $ventesQuery    = LigneVente::query()->where('status', true)->whereBetween('created_at', [$start, $end]);
+                $paiementsQuery = Paiement::query()->whereBetween('created_at', [$start, $end]);
+                $chargesQuery   = OperationCharge::query()->whereBetween('created_at', [$start, $end]);
+                $approsQuery    = ApprovisionnementCuve::query()->where('type_appro', 'approvisionnement')->whereBetween('created_at', [$start, $end]);
+                $creancesQuery  = Creance::query()->whereBetween('created_at', [$start, $end]);
 
-                /**
-                 * =========================
-                 * PAIEMENTS CRÉANCES
-                 * =========================
-                 */
-                $creancesQuery = Paiement::query()
-                    ->whereBetween('created_at', [$start, $end]);
-
-                /**
-                 * =========================
-                 * CHARGES
-                 * =========================
-                 */
-                $chargesQuery = OperationCharge::query()
-                    ->whereBetween('created_at', [$start, $end]);
-
-                /**
-                 * =========================
-                 * FILTRAGE STATION
-                 * =========================
-                 */
                 if ($user->role !== 'super_admin') {
 
                     $stationId = request()->attributes->get('station_active_id');
 
                     $ventesQuery->where('id_station', $stationId);
-
-                    $creancesQuery->whereHas('creance', function ($q) use ($stationId) {
-                        $q->where('id_station', $stationId);
-                    });
-
+                    $paiementsQuery->whereHas('creance', fn ($q) => $q->where('id_station', $stationId));
                     $chargesQuery->where('id_station', $stationId);
+                    $approsQuery->where('id_station', $stationId);
+                    $creancesQuery->where('id_station', $stationId);
                 }
 
-                $ventesDirectes    = $ventesQuery->sum('montant');
-                $paiementsCreances = $creancesQuery->sum('montant_payer');
-                $totalCharges      = $chargesQuery->sum('montant');
-                $totalVentes       = $ventesDirectes + $paiementsCreances;
-                $benefice          = $totalVentes - $totalCharges;
+                $ventesResult      = $ventesQuery->selectRaw('SUM(qte_vendu * prix_unitaire) as ca, SUM(qte_vendu) as litres')->first();
+                $ventesDirectes    = (float) ($ventesResult->ca ?? 0);
+                $litresVendus      = (float) ($ventesResult->litres ?? 0);
+
+                $paiementsCreances = (float) $paiementsQuery->sum('montant_payer');
+                $totalCharges      = (float) $chargesQuery->sum('montant');
+                $totalAppro        = (float) $approsQuery->sum(DB::raw('qte_appro * pu_unitaire'));
+                $totalCreances     = (float) $creancesQuery->sum('montant');
+
+                $margeBrute  = $litresVendus * 400;
+                $totalVentes = $ventesDirectes + $paiementsCreances;
+                $resultat    = $margeBrute - $totalCharges;
+                $benefice    = $totalVentes - $totalCharges;
 
                 $data[] = [
                     'mois'               => $start->translatedFormat('F'),
-                    'ventes_directes'    => (float) $ventesDirectes,
-                    'paiements_creances' => (float) $paiementsCreances,
-                    'total_ventes'       => (float) $totalVentes,
-                    'total_depenses'     => (float) $totalCharges,
-                    'benefice'           => (float) $benefice,
+                    'ventes_directes'    => $ventesDirectes,
+                    'paiements_creances' => $paiementsCreances,
+                    'total_ventes'       => $totalVentes,
+                    'litres_vendus'      => $litresVendus,
+                    'total_appro'        => $totalAppro,
+                    'marge_brute'        => $margeBrute,
+                    'total_depenses'     => $totalCharges,
+                    'total_creances'     => $totalCreances,
+                    'resultat'           => $resultat,
+                    'benefice'           => $benefice,
                 ];
             }
 

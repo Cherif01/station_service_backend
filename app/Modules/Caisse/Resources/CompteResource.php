@@ -49,6 +49,9 @@ class CompteResource extends JsonResource
             'solde_initial'  => (float) $this->solde_initial,
             'total_creances' => (float) Creance::where('id_station', $this->id_station)->sum('montant'),
             'solde_actuel'   => (float) $this->solde_actuel,
+            'solde_a_date'   => ($date = request()->query('date'))
+                ? (float) $this->soldeADate($date)
+                : null,
 
             // =============================================
             // 🔹 AUDIT

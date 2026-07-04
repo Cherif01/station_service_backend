@@ -191,6 +191,7 @@ class CuveService
         $sorties = LigneVente::visible()
             ->where('id_cuve', $idCuve)
             ->whereDate('created_at', $date)
+            ->where('status', true)
             ->sum('qte_vendu');
 
         $stockTheorique = $stockMatin + $entrees + $retourCuve - $sorties;

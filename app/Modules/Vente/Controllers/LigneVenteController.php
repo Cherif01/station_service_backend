@@ -55,11 +55,12 @@ class LigneVenteController extends Controller
     }
 
     /**
-     * Suppression d'une vente
+     * Suppression / annulation d'une vente
+     * Paramètre optionnel : raison (string) — obligatoire pour les ventes validées
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(Request $request, int $id): JsonResponse
     {
-        return $this->service->delete($id);
+        return $this->service->delete($id, $request->only(['raison']));
     }
 
     /**

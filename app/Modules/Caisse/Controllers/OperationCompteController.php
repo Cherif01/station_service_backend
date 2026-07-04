@@ -6,7 +6,7 @@ use App\Modules\Caisse\Requests\ConfirmTransfertCompteRequest;
 use App\Modules\Caisse\Requests\StoreOperationCompteRequest;
 use App\Modules\Caisse\Requests\StoreTransfertCompteRequest;
 use App\Modules\Caisse\Services\OperationCompteService;
-use illuminate\Http\Request;
+use Illuminate\Http\Request;
 
 class OperationCompteController extends Controller
 {

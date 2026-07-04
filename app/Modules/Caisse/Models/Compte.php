@@ -217,6 +217,55 @@ class Compte extends Model
     }
 
 
+    public function soldeADate(string $date): float
+    {
+        $dateLimite = $date . ' 23:59:59';
+        $solde      = (float) $this->solde_initial;
+
+        $operations = OperationCompte::where('status', 'effectif')
+            ->where('created_at', '<=', $dateLimite)
+            ->where(function ($q) {
+                $q->where('id_compte', $this->id)
+                    ->orWhere('id_source', $this->id)
+                    ->orWhere('id_destination', $this->id);
+            })
+            ->with('typeOperation')
+            ->get();
+
+        foreach ($operations as $op) {
+
+            $nature  = (int) $op->typeOperation->nature;
+            $montant = (float) $op->montant;
+
+            if ($nature === 1 && (int) $op->id_compte === (int) $this->id) {
+                $solde += $montant;
+            }
+
+            if ($nature === 0 && (int) $op->id_compte === (int) $this->id) {
+                $solde -= $montant;
+            }
+
+            if ($nature === 2) {
+                if ((int) $op->id_source === (int) $this->id) {
+                    $solde -= $montant;
+                }
+                if ((int) $op->id_destination === (int) $this->id) {
+                    $solde += $montant;
+                }
+            }
+        }
+
+        $solde += (float) Paiement::where('id_compte', $this->id)
+            ->where('created_at', '<=', $dateLimite)
+            ->sum('montant_payer');
+
+        $solde -= (float) Creance::where('id_station', $this->id_station)
+            ->where('created_at', '<=', $dateLimite)
+            ->sum('montant');
+
+        return round($solde, 2);
+    }
+
     /**
      * =================================================
      * AUDIT

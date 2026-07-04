@@ -28,7 +28,8 @@ class SetActiveStation
          */
         if ($user->role === 'super_admin') {
 
-            $stationId = Cache::get('station_active_user_' . $user->id);
+            $tenantDb  = $request->attributes->get('tenant_db', 'default');
+            $stationId = Cache::get('station_active_user_' . $user->id . '_' . $tenantDb);
         }
 
         /**

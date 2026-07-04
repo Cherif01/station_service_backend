@@ -246,8 +246,10 @@ class StationService
 
 public function activateStation(int $id)
 {
+    $tenantDb = request()->attributes->get('tenant_db', 'default');
+
     Cache::put(
-        'station_active_user_' . Auth::id(),
+        'station_active_user_' . Auth::id() . '_' . $tenantDb,
         $id,
         now()->addHours(12)
     );

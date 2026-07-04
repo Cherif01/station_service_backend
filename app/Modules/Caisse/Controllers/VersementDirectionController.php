@@ -4,6 +4,7 @@ namespace App\Modules\Caisse\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Caisse\Requests\ConfirmVersementDirectionRequest;
+use App\Modules\Caisse\Requests\StoreVersementDepuisDirectionRequest;
 use App\Modules\Caisse\Requests\StoreVersementDirectionRequest;
 use App\Modules\Caisse\Services\VersementDirectionService;
 use Illuminate\Http\Request;
@@ -46,5 +47,13 @@ class VersementDirectionController extends Controller
     public function annuler(ConfirmVersementDirectionRequest $request)
     {
         return $this->service->annuler($request->validated()['reference']);
+    }
+
+    /**
+     * Initier un versement depuis la Direction vers une Station — admin / super_admin
+     */
+    public function initierDepuisDirection(StoreVersementDepuisDirectionRequest $request)
+    {
+        return $this->service->initierDepuisDirection($request->validated());
     }
 }

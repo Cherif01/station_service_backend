@@ -88,6 +88,11 @@ Route::get('resume-mensuel', [OperationCompteController::class, 'resumeMensuel']
         );
 
         Route::post(
+            'versements-direction/initier-depuis-direction',
+            [VersementDirectionController::class, 'initierDepuisDirection']
+        );
+
+        Route::post(
             'versements-direction/annuler',
             [VersementDirectionController::class, 'annuler']
         );

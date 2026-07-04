@@ -176,6 +176,109 @@ class VersementDirectionService
 
     /**
      * =================================================
+     * INITIER UN VERSEMENT DEPUIS LA DIRECTION (admin / super_admin)
+     * =================================================
+     */
+    public function initierDepuisDirection(array $data)
+    {
+        DB::beginTransaction();
+
+        try {
+
+            $user = Auth::user();
+
+            if (! in_array($user->role, ['admin', 'super_admin'])) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 403,
+                    'message' => 'Seul un administrateur peut initier un versement depuis la direction.',
+                ], 403);
+            }
+
+            $compteDirection = CompteDirection::find($data['id_compte_direction']);
+
+            if (! $compteDirection) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Compte direction introuvable.',
+                ], 404);
+            }
+
+            $destination = Compte::lockForUpdate()
+                ->where('id_station', $data['id_station'])
+                ->first();
+
+            if (! $destination) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 404,
+                    'message' => 'Aucun compte trouvé pour cette station.',
+                ], 404);
+            }
+
+            $montant = (float) $data['montant'];
+
+            if ($montant <= 0) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Montant invalide.',
+                ], 409);
+            }
+
+            if ($montant > $compteDirection->solde_actuel) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Solde insuffisant sur le compte direction.',
+                ], 409);
+            }
+
+            $type = TypeOperation::where('nature', 2)->first();
+
+            if (! $type) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 500,
+                    'message' => 'Type opération "Transfert" non configuré. Contactez l\'administrateur.',
+                ], 500);
+            }
+
+            $versement = OperationCompte::create([
+                'id_compte'           => $destination->id,
+                'id_source'           => null,
+                'id_destination'      => $destination->id,
+                'id_compte_direction' => $compteDirection->id,
+                'id_type_operation'   => $type->id,
+                'montant'             => $montant,
+                'mode'                => $data['mode'],
+                'commentaire'         => $data['commentaire'] ?? null,
+                'status'              => 'en_attente',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'status'    => 200,
+                'message'   => 'Versement depuis la direction initié, en attente de confirmation.',
+                'reference' => $versement->reference,
+            ], 200);
+
+        } catch (Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'status'  => 500,
+                'message' => 'Erreur lors de l\'initiation du versement.',
+                'error'   => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * =================================================
      * CONFIRMER UN VERSEMENT (admin / super_admin uniquement)
      * =================================================
      */
@@ -209,12 +312,20 @@ class VersementDirectionService
                 ], 404);
             }
 
-            // Re-vérifier le solde source au moment de la confirmation
-            if ($versement->montant > $versement->source->solde_actuel) {
+            // Re-vérifier le solde au moment de la confirmation
+            if ($versement->id_source && $versement->montant > $versement->source->solde_actuel) {
                 DB::rollBack();
                 return response()->json([
                     'status'  => 409,
                     'message' => 'Solde insuffisant sur le compte source au moment de la confirmation.',
+                ], 409);
+            }
+
+            if (! $versement->id_source && $versement->montant > $versement->compteDirection->solde_actuel) {
+                DB::rollBack();
+                return response()->json([
+                    'status'  => 409,
+                    'message' => 'Solde insuffisant sur le compte direction au moment de la confirmation.',
                 ], 409);
             }
 
@@ -318,8 +429,9 @@ class VersementDirectionService
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->whereHas('source', function ($q) use ($stationId) {
-            $q->where('id_station', $stationId);
+        return $query->where(function ($q) use ($stationId) {
+            $q->whereHas('source', fn ($qs) => $qs->where('id_station', $stationId))
+              ->orWhereHas('destination', fn ($qd) => $qd->where('id_station', $stationId));
         });
     }
 }

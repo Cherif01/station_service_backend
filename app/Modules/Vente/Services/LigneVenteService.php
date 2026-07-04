@@ -3,16 +3,21 @@ namespace App\Modules\Vente\Services;
 
 use App\Modules\Caisse\Models\Compte;
 use App\Modules\Caisse\Models\OperationCompte;
+use App\Modules\Caisse\Models\TypeOperation;
 use App\Modules\Settings\Models\Affectation;
 use App\Modules\Settings\Models\Pompe;
 use App\Modules\Settings\Services\PompeService;
+use App\Modules\Vente\Models\ApprovisionnementCuve;
 use App\Modules\Vente\Models\Cuve;
+use App\Modules\Vente\Models\JaugeageCuve;
 use App\Modules\Vente\Models\LigneVente;
+use App\Modules\Vente\Models\PerteCuve;
 use App\Modules\Vente\Models\ValidationVente;
 use App\Modules\Vente\Resources\LigneVenteCollection;
 use App\Modules\Vente\Resources\LigneVenteResource;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -536,6 +541,45 @@ class LigneVenteService
 
             /**
              * ==========================================
+             * VÉRIFICATION STOCK DISPONIBLE
+             * ==========================================
+             */
+            $dernierJaugeage = JaugeageCuve::where('id_cuve', $item->id_cuve)
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($dernierJaugeage) {
+
+                $stockRef    = (float) $dernierJaugeage->volume_mesure;
+                $dateRef     = $dernierJaugeage->created_at;
+
+                $totalAppros = ApprovisionnementCuve::where('id_cuve', $item->id_cuve)
+                    ->where('type_appro', 'approvisionnement')
+                    ->where('created_at', '>=', $dateRef)
+                    ->sum('qte_appro');
+
+                $totalVentes = LigneVente::where('id_cuve', $item->id_cuve)
+                    ->where('status', true)
+                    ->where('created_at', '>=', $dateRef)
+                    ->sum('qte_vendu');
+
+                $totalPertes = PerteCuve::where('id_cuve', $item->id_cuve)
+                    ->where('created_at', '>=', $dateRef)
+                    ->sum('quantite_perdue');
+
+                $stockDispo = $stockRef + $totalAppros - $totalVentes - $totalPertes;
+
+                if ($stockDispo < $qteVendu) {
+                    DB::rollBack();
+                    return response()->json([
+                        'status'  => 409,
+                        'message' => "Stock insuffisant. Disponible : {$stockDispo} L, demandé : {$qteVendu} L.",
+                    ], 409);
+                }
+            }
+
+            /**
+             * ==========================================
              * UPDATE VENTE
              * ==========================================
              */
@@ -641,7 +685,7 @@ class LigneVenteService
      * SUPPRESSION / ANNULATION
      * =========================
      */
-    public function delete(int $id): JsonResponse
+    public function delete(int $id, array $data = []): JsonResponse
     {
         DB::beginTransaction();
 
@@ -656,11 +700,12 @@ class LigneVenteService
                 DB::rollBack();
 
                 return response()->json([
-                    'status'  => 404,
-                    'message' => 'Ligne de vente introuvable.',
+                    ‘status’  => 404,
+                    ‘message’ => ‘Ligne de vente introuvable.’,
                 ], 404);
             }
 
+            // Vente non encore validée : suppression simple, tout le monde peut le faire
             if ((bool) $item->status === false) {
 
                 $item->delete();
@@ -668,12 +713,25 @@ class LigneVenteService
                 DB::commit();
 
                 return response()->json([
-                    'status'  => 200,
-                    'message' => 'Vente non validée supprimée avec succès.',
+                    ‘status’  => 200,
+                    ‘message’ => ‘Vente non validée supprimée avec succès.’,
                 ], 200);
             }
 
-            $validation = ValidationVente::where('id_vente', $item->id)
+            // Vente validée : réservé aux admin / super_admin
+            $user = Auth::user();
+
+            if (! in_array($user->role, [‘admin’, ‘super_admin’])) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    ‘status’  => 403,
+                    ‘message’ => ‘Seul un administrateur peut annuler une vente validée.’,
+                ], 403);
+            }
+
+            $validation = ValidationVente::where(‘id_vente’, $item->id)
                 ->lockForUpdate()
                 ->first();
 
@@ -682,12 +740,12 @@ class LigneVenteService
                 DB::rollBack();
 
                 return response()->json([
-                    'status'  => 409,
-                    'message' => 'Validation de vente introuvable.',
+                    ‘status’  => 409,
+                    ‘message’ => ‘Validation de vente introuvable.’,
                 ], 409);
             }
 
-            $operationVente = OperationCompte::where('reference', 'VENTE-' . $item->id)
+            $operationVente = OperationCompte::where(‘reference’, ‘VENTE-’ . $item->id)
                 ->lockForUpdate()
                 ->first();
 
@@ -696,33 +754,58 @@ class LigneVenteService
                 DB::rollBack();
 
                 return response()->json([
-                    'status'  => 409,
-                    'message' => 'Opération comptable de la vente introuvable.',
+                    ‘status’  => 409,
+                    ‘message’ => ‘Opération comptable de la vente introuvable.’,
                 ], 409);
             }
 
+            $typeAnnulation = TypeOperation::where(‘nature’, 0)->first();
+
+            if (! $typeAnnulation) {
+
+                DB::rollBack();
+
+                return response()->json([
+                    ‘status’  => 500,
+                    ‘message’ => ‘Type opération "Sortie" non configuré. Contactez l\’administrateur.’,
+                ], 500);
+            }
+
             OperationCompte::create([
-                'id_compte'         => $operationVente->id_compte,
-                'id_type_operation' => 0,
-                'montant'           => $operationVente->montant,
-                'libelle'           => 'Annulation vente carburant',
-                'reference'         => 'ANNUL-VENTE-' . $item->id,
+                ‘id_compte’         => $operationVente->id_compte,
+                ‘id_type_operation’ => $typeAnnulation->id,
+                ‘montant’           => $operationVente->montant,
+                ‘reference’         => ‘ANNUL-VENTE-’ . $item->id,
+                ‘commentaire’       => ‘Annulation vente carburant’,
             ]);
 
-            $item->update([
-                'status' => false,
-            ]);
+            $item->update([‘status’ => false]);
+
+            $raison      = ! empty($data[‘raison’]) ? ‘ — Raison : ‘ . $data[‘raison’] : ‘’;
+            $annulePar   = $user->name ?? ‘Admin’;
 
             $validation->update([
-                'commentaire' => $validation->commentaire
-                . "\n---\nVENTE ANNULÉE LE " . now()->format('d/m/Y H:i'),
+                ‘commentaire’ => $validation->commentaire
+                    . "\n---\nVENTE ANNULÉE LE " . now()->format(‘d/m/Y H:i’)
+                    . ‘ par ‘ . $annulePar
+                    . $raison,
             ]);
+
+            // Rouvrir l’affectation pour permettre une re-saisie
+            $affectation = Affectation::find($item->id_affectation);
+
+            if ($affectation) {
+                $affectation->update([
+                    ‘status’  => true,
+                    ‘id_user’ => null,
+                ]);
+            }
 
             DB::commit();
 
             return response()->json([
-                'status'  => 200,
-                'message' => 'Vente validée annulée avec succès.',
+                ‘status’  => 200,
+                ‘message’ => ‘Vente annulée avec succès.’,
             ], 200);
 
         } catch (Throwable $e) {
@@ -730,9 +813,9 @@ class LigneVenteService
             DB::rollBack();
 
             return response()->json([
-                'status'  => 500,
-                'message' => 'Erreur lors de l’annulation de la vente.',
-                'error'   => $e->getMessage(),
+                ‘status’  => 500,
+                ‘message’ => ‘Erreur lors de l\’annulation de la vente.’,
+                ‘error’   => $e->getMessage(),
             ], 500);
         }
     }
